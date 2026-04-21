@@ -1,0 +1,20 @@
+{
+  "name": "{{SERVICE_NAME}}",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "fastify": "^4.26.2",
+    "@forgekit/shared-observability": "workspace:*",
+    "@forgekit/shared-tooling": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "tsx": "^4.7.2"
+  }
+}
