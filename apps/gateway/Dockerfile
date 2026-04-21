@@ -5,11 +5,11 @@ RUN corepack enable
 
 FROM base AS builder
 # Copy workspace config and package.json files
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yam[l] ./
 COPY apps/gateway/package.json ./apps/gateway/
 COPY packages/shared-observability/package.json ./packages/shared-observability/
 COPY packages/shared-tooling/package.json ./packages/shared-tooling/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # Copy source and build
 COPY tsconfig.base.json ./
