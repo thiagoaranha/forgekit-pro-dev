@@ -1,4 +1,4 @@
-import { PostgreSqlContainer } from 'testcontainers';
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
 
 export const startDbContainer = async () => {
     const container = await new PostgreSqlContainer("postgres:16-alpine").start();

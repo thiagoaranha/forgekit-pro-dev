@@ -40,7 +40,9 @@ jobs:
         run: pnpm run lint
 
       - name: Type Check & Build
-        run: pnpm run build
+        run: |
+          pnpm run db:generate
+          pnpm run build
         
       # Placeholder for actual test runners when implemented in the shared-testing bundle
       # - name: Run Unit & Integration Tests (Coverage > 80%)
