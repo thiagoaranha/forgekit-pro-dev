@@ -1,0 +1,30 @@
+{
+  "name": "forgekit-root",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "boot": "powershell.exe -ExecutionPolicy Bypass -File ./scripts/bootstrap/start.ps1",
+    "down": "docker-compose -f infra/compose/docker-compose.yml down",
+    "scaffold": "node ./scripts/scaffold/index.js",
+    "db:push": "pnpm -r run db:push",
+    "db:generate": "pnpm -r run db:generate",
+    "dev": "pnpm -r run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json,yaml,yml}\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.2",
+    "@eslint/js": "^9.0.0",
+    "typescript": "^5.4.5",
+    "prettier": "^3.2.5",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0"
+  }
+}
