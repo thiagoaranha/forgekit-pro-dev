@@ -26,11 +26,8 @@ docker-compose down
 docker-compose up -d --build
 
 Write-Host "`n[2/4] Synchronizing database schemas..."
-# Set temporary DATABASE_URL for host-side Prisma execution
-# In a real scenario, this would be environment-specific or loaded from .env
-$env:DATABASE_URL = "postgresql://forgekit:secret@localhost:5432/example_db?schema=public"
-cd ../../
-pnpm --filter example-service run db:push --accept-data-loss
+# Executing inside the container to ensure all dependencies and environment variables are present
+docker-compose exec -T example-service npx prisma db push --accept-data-loss
 
 Write-Host "`n[3/4] Waiting for Gateway to report healthy..."
 $maxRetries = 10
