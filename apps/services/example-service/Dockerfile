@@ -1,6 +1,7 @@
 FROM node:22-alpine AS base
 WORKDIR /app
-# Enable pnpm
+# Enable pnpm and install dependencies
+RUN apk add --no-cache openssl
 RUN corepack enable
 
 FROM base AS builder

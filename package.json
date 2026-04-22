@@ -6,6 +6,9 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
+    "boot": "powershell.exe -ExecutionPolicy Bypass -File ./scripts/bootstrap/start.ps1",
+    "down": "docker-compose -f infra/compose/docker-compose.yml down",
+    "scaffold": "node ./scripts/scaffold/index.js",
     "dev": "pnpm -r run dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
