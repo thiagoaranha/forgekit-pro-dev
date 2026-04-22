@@ -17,7 +17,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "`n[1/3] Starting infrastructure and services via Docker Compose..."
+Write-Host "`n[1/4] Starting infrastructure and services via Docker Compose..."
 cd (Split-Path -Parent $MyInvocation.MyCommand.Path)
 cd ../../infra/compose
 
@@ -25,7 +25,14 @@ cd ../../infra/compose
 docker-compose down
 docker-compose up -d --build
 
-Write-Host "`n[2/3] Waiting for Gateway to report healthy..."
+Write-Host "`n[2/4] Synchronizing database schemas..."
+# Set temporary DATABASE_URL for host-side Prisma execution
+# In a real scenario, this would be environment-specific or loaded from .env
+$env:DATABASE_URL = "postgresql://forgekit:secret@localhost:5432/example_db?schema=public"
+cd ../../
+pnpm --filter example-service run db:push --accept-data-loss
+
+Write-Host "`n[3/4] Waiting for Gateway to report healthy..."
 $maxRetries = 10
 $retryCount = 0
 $healthy = $false
@@ -50,7 +57,7 @@ if (-not $healthy) {
     exit 1
 }
 
-Write-Host "`n[3/3] System is running!" -ForegroundColor Green
+Write-Host "`n[4/4] System is running!" -ForegroundColor Green
 Write-Host "Gateway: http://localhost:3000"
 Write-Host "Example Service: http://localhost:3001"
 Write-Host "PostgreSQL: localhost:5432"

@@ -9,6 +9,8 @@
     "boot": "powershell.exe -ExecutionPolicy Bypass -File ./scripts/bootstrap/start.ps1",
     "down": "docker-compose -f infra/compose/docker-compose.yml down",
     "scaffold": "node ./scripts/scaffold/index.js",
+    "db:push": "pnpm -r run db:push",
+    "db:generate": "pnpm -r run db:generate",
     "dev": "pnpm -r run dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
