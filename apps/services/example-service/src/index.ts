@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import { logger } from '@forgekit/shared-observability';
 import { PrismaClient } from '@prisma/client';
+import healthRoutes from './routes/health';
+import itemRoutes from './routes/items';
 
 const prisma = new PrismaClient();
 
@@ -13,8 +15,8 @@ const buildService = async () => {
         logger.info({ reqId: correlationId, method: request.method, url: request.url }, 'Incoming request');
     });
 
-    server.register(require('./routes/health'));
-    server.register(require('./routes/items'), { prefix: '/items' });
+    server.register(healthRoutes);
+    server.register(itemRoutes, { prefix: '/items' });
     
     // Inject prisma into the fastify instance
     server.decorate('prisma', prisma);

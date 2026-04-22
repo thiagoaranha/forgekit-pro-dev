@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import jwt from '@fastify/jwt';
 import httpProxy from '@fastify/http-proxy';
 import { logger, getCorrelationId } from '@forgekit/shared-observability';
+import authRoutes from './routes/auth';
+import healthRoutes from './routes/health';
 
 const buildGateway = async () => {
   const server = Fastify({ logger: false }); // We use our own logger instance inside handlers or inject it
@@ -12,10 +14,10 @@ const buildGateway = async () => {
   });
 
   // Health endpoint
-  server.register(require('./routes/health'));
+  server.register(healthRoutes);
 
   // Auth endpoint for dev token generation
-  server.register(require('./routes/auth'), { prefix: '/auth' });
+  server.register(authRoutes, { prefix: '/auth' });
 
   // Proxy to example-service
   // Notice we use a preHandler to verify the JWT and inject it before proxying
