@@ -35,4 +35,5 @@
 
 - Specification is structured to serve as the architectural reference for all ForgeKit services
 - Messaging-pattern selection criteria now explicitly distinguish queue-based and publish/subscribe use cases
+- Clarification decisions were incorporated for identity propagation headers, timeout class defaults, retry/DLQ policy, event schema governance, and HTTP/gRPC selection guidance
 - Document is ready for architecture planning and downstream task generation

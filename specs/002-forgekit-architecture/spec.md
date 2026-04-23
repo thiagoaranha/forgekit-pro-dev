@@ -140,6 +140,20 @@ An architecture reviewer needs the specification to define mandatory production 
 - **FR-048**: The architecture specification MUST state that infrastructure orchestration is out of scope.
 - **FR-049**: The architecture specification MUST state that infrastructure provisioning details are out of scope.
 - **FR-050**: The architecture specification MUST state that no specific programming language or framework is mandated by this architecture.
+- **FR-051**: HTTP MUST be the default protocol for synchronous service-to-service request/response communication.
+- **FR-052**: gRPC MAY be used for internal synchronous communication only when low-latency and strongly typed contracts are explicit requirements.
+- **FR-053**: Synchronous timeout configuration MUST follow interaction classes: internal read, internal write, and external dependency.
+- **FR-054**: Architecture-level timeout defaults MUST be 1 second connect timeout for all classes, 3 seconds request timeout for internal read/write, and 5 seconds request timeout for external dependency calls.
+- **FR-055**: Synchronous interactions MUST define and enforce a hard maximum timeout of 10 seconds unless a documented architecture exception is approved.
+- **FR-056**: Event consumer retry policy MUST classify failures into retryable and non-retryable categories before retry behavior is applied.
+- **FR-057**: Retryable event-processing failures MUST use exponential backoff with jitter and MUST stop after a maximum of 3 attempts before routing the message to a Dead Letter Queue.
+- **FR-058**: Non-retryable event-processing failures MUST bypass retry and be routed directly to a Dead Letter Queue or equivalent failure channel.
+- **FR-059**: Event schema ownership MUST remain with the producing service, and each producer MUST publish discoverable versioned schema contracts.
+- **FR-060**: A central architecture governance policy MUST define cross-service schema compatibility rules, review triggers, and escalation paths for schema changes.
+- **FR-061**: Event schema changes that break backward compatibility MUST require explicit architecture review and a documented migration strategy before release.
+- **FR-062**: For synchronous communication, identity context MUST use standardized headers `x-user-id`, `x-user-roles`, and `x-user-permissions`.
+- **FR-063**: For asynchronous communication, identity context metadata MUST provide equivalents of `x-user-id`, `x-user-roles`, and `x-user-permissions` with the same semantics.
+- **FR-064**: Token passthrough MAY be used as an additional transport mechanism for identity context, but downstream authorization decisions MUST rely on standardized propagated claims.
 
 ### Key Entities
 
