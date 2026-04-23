@@ -5,7 +5,7 @@ RUN corepack enable
 
 FROM base AS builder
 # Copy workspace config and package.json files
-COPY pnpm-workspace.yaml package.json pnpm-lock.yam[l] ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/gateway/package.json ./apps/gateway/
 COPY packages/shared-observability/package.json ./packages/shared-observability/
 COPY packages/shared-tooling/package.json ./packages/shared-tooling/

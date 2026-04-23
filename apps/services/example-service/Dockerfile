@@ -6,11 +6,11 @@ RUN corepack enable
 
 FROM base AS builder
 # Copy workspace config and package.json files
-COPY pnpm-workspace.yaml package.json pnpm-lock.yam[l] ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/services/example-service/package.json ./apps/services/example-service/
 COPY packages/shared-observability/package.json ./packages/shared-observability/
 COPY packages/shared-tooling/package.json ./packages/shared-tooling/
-RUN pnpm install
+RUN pnpm install --prod=false
 
 # Copy source and build
 COPY tsconfig.base.json ./
