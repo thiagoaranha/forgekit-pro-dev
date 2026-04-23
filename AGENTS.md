@@ -6,7 +6,7 @@
 - CI targets `master` and runs: `pnpm install --frozen-lockfile` -> `pnpm run lint` -> `pnpm run build` (tests are commented out in CI).
 
 ## High-Value Commands (from repo scripts)
-- Full local stack (Docker + db sync + health wait): `pnpm boot` (PowerShell script at `scripts/bootstrap/start.ps1`).
+- Full local stack (Docker + db sync + health wait): `pnpm boot` (cross-platform Node script at `scripts/bootstrap/start.js`).
 - Stop local stack: `pnpm down`.
 - Run all workspace dev/build/lint/test scripts: `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm test`.
 - Format repo files: `pnpm format`.
@@ -29,7 +29,7 @@
 
 ## Gotchas Likely To Waste Time
 - `scripts/scaffold/index.js` only copies `packages/service-template` into `apps/services/<name>` and replaces `{{SERVICE_NAME}}` in two files; it does **not** auto-register routes in gateway or docker-compose.
-- Bootstrap script expects `docker-compose` CLI and runs `prisma db push --accept-data-loss` inside the `example-service` container.
+- Bootstrap script supports both `docker compose` and `docker-compose` and runs `prisma db push --accept-data-loss` inside the `example-service` container.
 - No test suites/config are currently wired in repo-level CI despite `test` scripts at root.
 - `pnpm-lock.yaml` is not present in this checkout, but CI uses `--frozen-lockfile`; lockfile-sensitive changes should account for that.
 
