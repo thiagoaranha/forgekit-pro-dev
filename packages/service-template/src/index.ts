@@ -1,25 +1,46 @@
 import Fastify from 'fastify';
 import { logger } from '@forgekit/shared-observability';
+import { ReadinessService } from './application/health/readiness-service';
+import { loadConfig } from './infrastructure/config/service-config';
+import { InMemoryMetrics } from './infrastructure/metrics/in-memory-metrics';
+import { resolveCorrelationId } from './infrastructure/observability/correlation-id';
+import { registerErrorHandler } from './transport/http/error-handler';
+import { registerRoutes } from './transport/http/register-routes';
 
 const buildService = async () => {
     const server = Fastify({ logger: false });
+    const metrics = new InMemoryMetrics();
+    const readinessService = new ReadinessService([]);
+    const requestStartTime = new Map<string, bigint>();
 
-    server.addHook('onRequest', async (request, reply) => {
-        const correlationId = request.headers['x-correlation-id'] || 'no-correlation';
-        logger.info({ reqId: correlationId, method: request.method, url: request.url }, 'Incoming request');
+    registerErrorHandler(server, metrics);
+    registerRoutes(server, readinessService, metrics);
+
+    server.addHook('onRequest', async (request) => {
+        const correlationId = resolveCorrelationId(request);
+        requestStartTime.set(request.id, process.hrtime.bigint());
+        logger.info({ correlationId, method: request.method, url: request.url }, 'Incoming request');
     });
 
-    server.register(require('./routes/health'));
+    server.addHook('onResponse', async (request, reply) => {
+        const startTime = requestStartTime.get(request.id);
+        requestStartTime.delete(request.id);
+        if (startTime !== undefined) {
+            const durationMs = Number(process.hrtime.bigint() - startTime) / 1_000_000;
+            metrics.observeRequest(durationMs, reply.statusCode);
+        }
+    });
 
     return server;
 };
 
 const start = async () => {
-    const server = await buildService();
     try {
-        const port = Number(process.env.PORT) || 3000;
-        await server.listen({ port, host: '0.0.0.0' });
-        logger.info(`Service {{SERVICE_NAME}} is running on port ${port}`);
+        const config = loadConfig();
+        const server = await buildService();
+
+        await server.listen({ port: config.PORT, host: config.HOST });
+        logger.info({ port: config.PORT, host: config.HOST }, 'Service {{SERVICE_NAME}} started');
 
         const gracefulShutdown = async () => {
             logger.info('Shutdown signal received, closing service...');
