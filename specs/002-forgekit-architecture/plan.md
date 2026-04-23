@@ -1,6 +1,6 @@
 # Implementation Plan: ForgeKit Architecture Reference
 
-**Branch**: `002-forgekit-architecture` | **Date**: 2026-04-22 | **Spec**: [spec.md](C:/Projetos/forgeKit/specs/002-forgekit-architecture/spec.md)
+**Branch**: `002-forgekit-architecture` | **Date**: 2026-04-22 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/002-forgekit-architecture/spec.md`
 
 ## Summary

@@ -1,6 +1,6 @@
 # Implementation Plan: ForgeKit System Overview
 
-**Branch**: `004-forgekit-overview-plan` | **Date**: 2026-04-17 | **Spec**: [spec.md](C:/Projetos/forgeKit/specs/001-forgekit-overview/spec.md)
+**Branch**: `004-forgekit-overview-plan` | **Date**: 2026-04-17 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/001-forgekit-overview/spec.md`
 
 ## Summary
