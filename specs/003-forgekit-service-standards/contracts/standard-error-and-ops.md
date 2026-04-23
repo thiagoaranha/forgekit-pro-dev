@@ -24,6 +24,27 @@ Every external error response MUST include:
 - **Readiness**: Indicates capability to safely handle traffic/messages and MAY depend on required dependencies.
 - Services MUST document which dependencies affect readiness.
 
+### Readiness Dependency Declaration
+
+Every service readiness contract MUST include:
+
+- `dependency`: dependency name used in runtime checks.
+- `requiredForReadiness`: boolean flag indicating whether traffic/message handling is blocked.
+- `failureEffect`: short statement describing degraded behavior when dependency is unavailable.
+
+Example declaration:
+
+| dependency | requiredForReadiness | failureEffect |
+|---|---|---|
+| `primary-database` | `true` | Reject write and read traffic with `503` readiness state. |
+| `message-broker` | `false` | Continue API traffic, suspend event publication and report degraded mode. |
+
+## Metrics Contract
+
+- Services MUST expose machine-readable metrics for request count, error rate, and latency.
+- Metric labels MUST avoid sensitive data and high-cardinality uncontrolled values.
+- Metric emission failures MUST NOT crash request handling paths.
+
 ## Logging and Correlation Rules
 
 - Logs MUST be structured and machine-parseable.
