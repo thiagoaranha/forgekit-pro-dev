@@ -3,7 +3,7 @@ const path = require('path');
 
 const serviceName = process.argv[2];
 if (!serviceName) {
-    console.error('ERROR: You must provide a service name. Example: node scripts/scaffold/index.js my-new-service');
+    console.error('ERROR: You must provide a service name. Example: pnpm scaffold my-new-service');
     process.exit(1);
 }
 

@@ -9,7 +9,7 @@
 No more manual setups or scattered `.env` files. Spin the entire environment up in seconds from the root directory:
 
 ```powershell
-./scripts/bootstrap/start.ps1
+pnpm boot
 ```
 
 This ensures RabbitMQ, PostgreSQL, the API Gateway, and the Example Service mount correctly. It waits for the `health/live` check from the gateway.
