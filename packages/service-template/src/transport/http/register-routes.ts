@@ -3,6 +3,8 @@ import type { ReadinessService } from '../../application/health/readiness-servic
 import type { InMemoryMetrics } from '../../infrastructure/metrics/in-memory-metrics';
 import { registerHealthRoutes } from './routes/health-routes';
 import { registerMetricsRoutes } from './routes/metrics-routes';
+// SCAFFOLD EXAMPLE — Remove this import once you add domain-specific routes.
+import { registerExampleRoutes } from './routes/example-routes';
 
 export const registerRoutes = (
     server: FastifyInstance,
@@ -11,4 +13,6 @@ export const registerRoutes = (
 ): void => {
     registerHealthRoutes(server, readinessService);
     registerMetricsRoutes(server, metrics);
+    // SCAFFOLD EXAMPLE — Remove this registration once you add domain-specific routes.
+    registerExampleRoutes(server);
 };
