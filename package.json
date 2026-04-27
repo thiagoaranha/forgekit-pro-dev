@@ -9,6 +9,7 @@
     "boot": "node ./scripts/bootstrap/start.js",
     "down": "node ./scripts/bootstrap/down.js",
     "scaffold": "node ./scripts/scaffold/index.js",
+    "validate-spec": "node ./scripts/validate-spec.js",
     "db:push": "pnpm -r run db:push",
     "db:generate": "pnpm -r run db:generate",
     "dev": "pnpm -r run dev",
