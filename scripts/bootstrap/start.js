@@ -57,8 +57,6 @@ async function main() {
   console.log('Example Service: http://localhost:3001');
   console.log('PostgreSQL: localhost:5432');
   console.log('RabbitMQ Mgmt: http://localhost:15672 (forgekit:secret)');
-  console.log('order-service: http://localhost:3002');
-  console.log('order-service: http://localhost:3002');
 }
 
 main().catch((error) => {
