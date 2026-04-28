@@ -68,8 +68,7 @@ function checkEvidence(req) {
                 const results = [];
                 // Check in service template and apps/services
                 const locations = [
-                    'packages/service-template/Dockerfile',
-                    'apps/services/order-service/Dockerfile' // Example service from SC-001
+                    'packages/service-template/Dockerfile'
                 ];
                 locations.forEach(loc => {
                     if (fs.existsSync(path.join(process.cwd(), loc))) {
