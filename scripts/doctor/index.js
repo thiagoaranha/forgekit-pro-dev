@@ -55,6 +55,22 @@ async function runDiagnostics() {
         const serviceBlockRegex = new RegExp(`^\\s{2}${serviceName}:`, 'm');
         if (serviceBlockRegex.test(composeContent)) {
             printResult(`Compose Registration`, true, `Found '${serviceName}' in docker-compose.yml`);
+            
+            // Check for required ENVs in compose block
+            // This is a naive check to see if the strings exist within the file, 
+            // ideally we'd parse the block, but this serves as a basic smoke test.
+            // Since we know the scaffold puts them there, we just check if they exist.
+            const blockStartIndex = composeContent.indexOf(`  ${serviceName}:`);
+            const nextBlockIndex = composeContent.indexOf(`\n  `, blockStartIndex + 5);
+            const blockContent = nextBlockIndex !== -1 ? composeContent.substring(blockStartIndex, nextBlockIndex) : composeContent.substring(blockStartIndex);
+            
+            if (!blockContent.includes('DATABASE_URL')) {
+                printResult(`Compose Config`, false, `Missing DATABASE_URL`, `Add DATABASE_URL to the service environment in docker-compose.yml`);
+            } else if (!blockContent.includes('RABBITMQ_URL')) {
+                printResult(`Compose Config`, false, `Missing RABBITMQ_URL`, `Add RABBITMQ_URL to the service environment in docker-compose.yml`);
+            } else {
+                printResult(`Compose Config`, true, `Found required ENVs (DATABASE_URL, RABBITMQ_URL)`);
+            }
         } else {
             printResult(`Compose Registration`, false, `Service '${serviceName}' not found in docker-compose.yml`, `Run 'pnpm scaffold ${serviceName}' to register the service, or add it manually.`);
         }
