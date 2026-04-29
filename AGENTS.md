@@ -2,7 +2,7 @@
 
 ## Runtime + Workspace Facts
 - Monorepo uses `pnpm` workspaces (`apps/**`, `packages/*`) with Node `>=22` and pnpm `>=9`.
-- There is currently no root `README`; rely on executable sources (`package.json`, workflow, scripts) over `specs/` prose when they differ.
+- Refer to the root `README.md` for high-level setup and commands. Rely on executable sources (`package.json`, workflow, scripts) over `specs/` prose when they differ.
 - CI targets `master` and runs: `pnpm install --frozen-lockfile` -> `pnpm run lint` -> `pnpm run build` (tests are commented out in CI).
 
 ## High-Value Commands (from repo scripts)
