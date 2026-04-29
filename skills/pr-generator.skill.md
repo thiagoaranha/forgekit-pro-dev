@@ -40,7 +40,7 @@ Generate the PR message using the following standardized template:
 1. **`[Commit Message]`**: [Briefly explain what was done in this commit if the message isn't descriptive enough].
 2. **`[Commit Message]`**: [Briefly explain].
 
-## How to Test (if applies)
+## How to Test
 1. [Step 1: e.g., Run `pnpm boot`]
 2. [Step 2: e.g., Execute specific command or hit endpoint]
 3. [Step 3: e.g., Verify specific log output or DB state]
