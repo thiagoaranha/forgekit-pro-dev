@@ -241,6 +241,7 @@ function buildGatewayProxyBlock(serviceName, servicePort) {
     upstream: process.env.${envVarName} || '${localFallback}',
     prefix: '/api/${serviceName}',
     preHandler: async (request, reply) => {
+      if (request.url.includes('/health/')) return;
       try {
         await request.jwtVerify();
         const user = request.user as any;

@@ -89,14 +89,14 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
-  packages/service-template:
+  apps/services/test-service:
     dependencies:
       '@forgekit/shared-observability':
         specifier: workspace:*
-        version: link:../shared-observability
+        version: link:../../../packages/shared-observability
       '@forgekit/shared-tooling':
         specifier: workspace:*
-        version: link:../shared-tooling
+        version: link:../../../packages/shared-tooling
       fastify:
         specifier: ^4.26.2
         version: 4.29.1

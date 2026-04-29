@@ -25,6 +25,26 @@ const buildGateway = async () => {
     upstream: process.env.EXAMPLE_SERVICE_URL || 'http://localhost:3001',
     prefix: '/api/example',
     preHandler: async (request, reply) => {
+      if (request.url.includes('/health/')) return;
+      try {
+        await request.jwtVerify();
+        const user = request.user as any;
+        request.headers['x-forgekit-user-id'] = user.sub;
+        request.headers['x-forgekit-role'] = user.role;
+        request.headers['x-correlation-id'] = request.headers['x-correlation-id'] || getCorrelationId();
+      } catch (err) {
+        reply.code(401).send({ error: 'Unauthorized', message: 'Valid dev token is required' });
+      }
+    }
+  });
+
+  // SCAFFOLD EXAMPLE — Proxy for test-service.
+  // Requests to /api/test-service/* are forwarded to the test-service service.
+  server.register(httpProxy, {
+    upstream: process.env.TEST_SERVICE_SERVICE_URL || 'http://localhost:3002',
+    prefix: '/api/test-service',
+    preHandler: async (request, reply) => {
+      if (request.url.includes('/health/')) return;
       try {
         await request.jwtVerify();
         const user = request.user as any;

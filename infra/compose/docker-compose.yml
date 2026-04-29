@@ -10,8 +10,10 @@ services:
     environment:
       - NODE_ENV=development
       - EXAMPLE_SERVICE_URL=http://example-service:3001
+      - TEST_SERVICE_SERVICE_URL=http://test-service:3002
     depends_on:
       - example-service
+      - test-service
     networks:
       - forgekit-net
 
@@ -24,6 +26,24 @@ services:
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://forgekit:secret@postgres:5432/example_db?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - forgekit-net
+
+  test-service:
+    build:
+      context: ../../
+      dockerfile: apps/services/test-service/Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://forgekit:secret@postgres:5432/test_service_db?schema=public
+      - RABBITMQ_URL=amqp://forgekit:secret@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
