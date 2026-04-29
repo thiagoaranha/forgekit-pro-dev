@@ -54,20 +54,16 @@ async function runDiagnostics() {
         composeContent = fs.readFileSync(COMPOSE_FILE_PATH, 'utf8');
         const serviceBlockRegex = new RegExp(`^\\s{2}${serviceName}:`, 'm');
         if (serviceBlockRegex.test(composeContent)) {
-            printResult(`Compose Registration`, true, `Found '${serviceName}' in docker-compose.yml`);
-            
-            // Check for required ENVs in compose block
-            // This is a naive check to see if the strings exist within the file, 
-            // ideally we'd parse the block, but this serves as a basic smoke test.
-            // Since we know the scaffold puts them there, we just check if they exist.
-            const blockStartIndex = composeContent.indexOf(`  ${serviceName}:`);
-            const nextBlockIndex = composeContent.indexOf(`\n  `, blockStartIndex + 5);
-            const blockContent = nextBlockIndex !== -1 ? composeContent.substring(blockStartIndex, nextBlockIndex) : composeContent.substring(blockStartIndex);
+            const blockStartIndex = composeContent.search(new RegExp(`^  ${serviceName}:`, 'm'));
+            const remaining = composeContent.substring(blockStartIndex);
+            // Find the next line that starts with exactly 2 spaces (next service or top level)
+            const nextBlockMatch = remaining.match(/\n  [a-z0-9]/);
+            const blockContent = nextBlockMatch ? remaining.substring(0, nextBlockMatch.index) : remaining;
             
             if (!blockContent.includes('DATABASE_URL')) {
-                printResult(`Compose Config`, false, `Missing DATABASE_URL`, `Add DATABASE_URL to the service environment in docker-compose.yml`);
+                printResult(`Compose Config`, false, `Missing DATABASE_URL in '${serviceName}' block`, `Add DATABASE_URL to the service environment in docker-compose.yml`);
             } else if (!blockContent.includes('RABBITMQ_URL')) {
-                printResult(`Compose Config`, false, `Missing RABBITMQ_URL`, `Add RABBITMQ_URL to the service environment in docker-compose.yml`);
+                printResult(`Compose Config`, false, `Missing RABBITMQ_URL in '${serviceName}' block`, `Add RABBITMQ_URL to the service environment in docker-compose.yml`);
             } else {
                 printResult(`Compose Config`, true, `Found required ENVs (DATABASE_URL, RABBITMQ_URL)`);
             }
@@ -75,7 +71,7 @@ async function runDiagnostics() {
             printResult(`Compose Registration`, false, `Service '${serviceName}' not found in docker-compose.yml`, `Run 'pnpm scaffold ${serviceName}' to register the service, or add it manually.`);
         }
     } catch (err) {
-        printResult(`Compose Registration`, false, `Could not read docker-compose.yml`, `Ensure you are running this from the repository root.`);
+        printResult(`Compose Registration`, false, `Could not read docker-compose.yml: ${err.message}`);
     }
 
     // 1.2 Check Gateway routing
@@ -94,13 +90,22 @@ async function runDiagnostics() {
     // ─── 2. Runtime Checks ──────────────────────────────────────────────────
     
     let isContainerRunning = false;
+    let actualContainerName = '';
     try {
-        const output = execSync(`docker ps --filter "name=${serviceName}" --format "{{.Status}}"`, { encoding: 'utf8' }).trim();
-        if (output && output.includes('Up')) {
-            isContainerRunning = true;
-            printResult(`Container Status`, true, `Container is running (${output})`);
+        // Try to find the container name dynamically using docker ps
+        const psOutput = execSync(`docker ps --filter "label=com.docker.compose.service=${serviceName}" --format "{{.Names}}|{{.Status}}"`, { encoding: 'utf8' }).trim();
+        
+        if (psOutput) {
+            const [name, status] = psOutput.split('|');
+            actualContainerName = name;
+            if (status.includes('Up')) {
+                isContainerRunning = true;
+                printResult(`Container Status`, true, `Container '${name}' is running (${status})`);
+            } else {
+                printResult(`Container Status`, false, `Container '${name}' is not running`, `Run 'pnpm boot' to start the docker stack.`);
+            }
         } else {
-            printResult(`Container Status`, false, `Container for '${serviceName}' is not running`, `Run 'pnpm boot' to start the docker stack.`);
+            printResult(`Container Status`, false, `No container found for service '${serviceName}'`, `Run 'pnpm boot' to start the docker stack.`);
         }
     } catch (err) {
         printResult(`Container Status`, false, `Docker command failed`, `Ensure Docker is running and accessible.`);
@@ -114,8 +119,6 @@ async function runDiagnostics() {
 
     // ─── 3. Network Checks ──────────────────────────────────────────────────
 
-    // Wait a brief moment just in case the container just started (usually handled by depends_on in compose, but good for raw doctor runs)
-    
     // 3.1 Health Endpoint Check
     try {
         const { statusCode } = await fetchHttp(`http://localhost:3000/api/${serviceName}/health/live`);
@@ -125,7 +128,7 @@ async function runDiagnostics() {
             printResult(`Health Endpoint`, false, `Health endpoint returned status ${statusCode}`, `Check the service logs to see why the health check is failing.`);
         }
     } catch (err) {
-        printResult(`Health Endpoint`, false, `Failed to reach health endpoint: ${err.message}`, `Ensure the service port is correctly mapped in docker-compose.yml and the gateway is proxying correctly.`);
+        printResult(`Health Endpoint`, false, `Failed to reach health endpoint: ${err.message}`, `Ensure the gateway bypass for health checks is working.`);
     }
 
     // 3.2 Sync Endpoint Check
@@ -136,7 +139,7 @@ async function runDiagnostics() {
         } else if (statusCode === 401 || statusCode === 403) {
              printResult(`Sync Endpoint`, true, `Endpoint secured (returned ${statusCode}), request reached service.`);
         } else {
-            printResult(`Sync Endpoint`, false, `Endpoint returned status ${statusCode}`, `Check the service routes in apps/services/${serviceName}/src/transport/http/routes/`);
+            printResult(`Sync Endpoint`, false, `Endpoint returned status ${statusCode}`, `Check the service routes.`);
         }
     } catch (err) {
         printResult(`Sync Endpoint`, false, `Failed to reach sync endpoint: ${err.message}`);
@@ -144,21 +147,20 @@ async function runDiagnostics() {
 
     // 3.3 Async Check (Log sniffing)
     try {
-        // Trigger the async flow by hitting the items endpoint which publishes a message in the scaffold example
+        // Trigger the async flow
         await fetchHttp(`http://localhost:3000/api/${serviceName}/items`);
         
         // Wait for consumer to process
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        const logs = execSync(`docker logs forgekit-${serviceName}-1 --tail 50`, { encoding: 'utf8' });
-        // The example consumer logs something like: Processed item_created event ...
-        if (logs.includes('Processed item_created event') || logs.includes('correlationId')) {
-            printResult(`Async Messaging`, true, `Found consumer processing logs with correlationId`);
+        const logs = execSync(`docker logs ${actualContainerName} --tail 100`, { encoding: 'utf8' });
+        if (logs.includes('Processed item_created event') || logs.includes('correlationId') || logs.includes('x-correlation-id')) {
+            printResult(`Async Messaging`, true, `Found consumer processing logs`);
         } else {
-            printResult(`Async Messaging`, false, `Did not find consumer processing logs recently`, `Check RabbitMQ connection in the service logs or verify the consumer is registered.`);
+            printResult(`Async Messaging`, false, `Did not find consumer processing logs recently`, `Check RabbitMQ connectivity or service logs.`);
         }
     } catch (err) {
-        printResult(`Async Messaging`, false, `Could not verify async logs. Are you using a custom container name format?`);
+        printResult(`Async Messaging`, false, `Could not verify async logs: ${err.message}`);
     }
 
     // ─── Finish ─────────────────────────────────────────────────────────────
