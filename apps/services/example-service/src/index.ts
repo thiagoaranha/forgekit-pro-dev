@@ -1,25 +1,29 @@
 import Fastify from 'fastify';
-import { logger } from '@forgekit/shared-observability';
+import { healthPlugin, logger, observabilityPlugin } from '@forgekit/shared-observability';
 import { PrismaClient } from '@prisma/client';
-import healthRoutes from './routes/health';
 import itemRoutes from './routes/items';
 
 const prisma = new PrismaClient();
+const SERVICE_NAME = 'example-service';
 
 const buildService = async () => {
     const server = Fastify({ logger: false });
 
-    // Custom logger hook to print requests with correlation ID
-    server.addHook('onRequest', async (request, reply) => {
-        const correlationId = request.headers['x-correlation-id'] || 'no-correlation';
-        logger.info({ reqId: correlationId, method: request.method, url: request.url }, 'Incoming request');
+    server.register(observabilityPlugin, { serviceName: SERVICE_NAME });
+    server.register(healthPlugin, {
+        serviceName: SERVICE_NAME,
+        readinessChecks: [
+            {
+                name: 'postgres',
+                check: async () => {
+                    await prisma.$queryRaw`SELECT 1`;
+                },
+            },
+        ],
     });
 
-    server.register(healthRoutes);
-    server.register(itemRoutes, { prefix: '/items' });
-    
-    // Inject prisma into the fastify instance
     server.decorate('prisma', prisma);
+    server.register(itemRoutes, { prefix: '/items' });
 
     return server;
 };
