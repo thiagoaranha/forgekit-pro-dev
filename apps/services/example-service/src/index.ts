@@ -1,15 +1,23 @@
 import Fastify from 'fastify';
-import { healthPlugin, logger, observabilityPlugin } from '@forgekit/shared-observability';
+import {
+    healthPlugin,
+    initializeTracing,
+    logger,
+    observabilityErrorHandlerPlugin,
+    observabilityPlugin,
+} from '@forgekit/shared-observability';
 import { PrismaClient } from '@prisma/client';
 import itemRoutes from './routes/items';
 
 const prisma = new PrismaClient();
 const SERVICE_NAME = 'example-service';
+initializeTracing({ serviceName: SERVICE_NAME });
 
 const buildService = async () => {
     const server = Fastify({ logger: false });
 
     server.register(observabilityPlugin, { serviceName: SERVICE_NAME });
+    server.register(observabilityErrorHandlerPlugin);
     server.register(healthPlugin, {
         serviceName: SERVICE_NAME,
         readinessChecks: [

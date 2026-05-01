@@ -1,10 +1,19 @@
 import Fastify from 'fastify';
 import jwt from '@fastify/jwt';
 import httpProxy from '@fastify/http-proxy';
-import { getCorrelationId, getTraceContext, healthPlugin, logger, observabilityPlugin } from '@forgekit/shared-observability';
+import {
+  getCorrelationId,
+  getTraceId,
+  healthPlugin,
+  initializeTracing,
+  injectObservabilityHeaders,
+  logger,
+  observabilityPlugin,
+} from '@forgekit/shared-observability';
 import authRoutes from './routes/auth';
 
 const SERVICE_NAME = 'gateway';
+initializeTracing({ serviceName: SERVICE_NAME });
 
 const buildGateway = async () => {
   const server = Fastify({ logger: false }); // We use our own logger instance inside handlers or inject it
@@ -33,11 +42,15 @@ const buildGateway = async () => {
         const user = request.user as any;
         request.headers['x-forgekit-user-id'] = user.sub;
         request.headers['x-forgekit-role'] = user.role;
-        request.headers['x-correlation-id'] = getCorrelationId();
-        request.headers['traceparent'] = getTraceContext();
+        Object.assign(request.headers, injectObservabilityHeaders());
       } catch (err) {
         logger.warn({ err, path: request.url }, 'Gateway authentication failed');
-        return reply.code(401).send({ error: 'Unauthorized', message: 'Valid dev token is required', correlationId: getCorrelationId() });
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Valid dev token is required',
+          correlationId: getCorrelationId(),
+          traceId: getTraceId(),
+        });
       }
     }
   });

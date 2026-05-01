@@ -11,10 +11,14 @@ To integrate it into a new Fastify service:
 ```typescript
 import Fastify from 'fastify';
 import { 
+  initializeTracing,
   observabilityPlugin, 
   logger, 
-  healthPlugin 
+  healthPlugin,
+  observabilityErrorHandlerPlugin
 } from '@forgekit/shared-observability';
+
+initializeTracing({ serviceName: 'my-new-service' });
 
 const buildService = async () => {
   const server = Fastify({ logger: false });
@@ -23,6 +27,7 @@ const buildService = async () => {
   server.register(observabilityPlugin, {
     serviceName: 'my-new-service'
   });
+  server.register(observabilityErrorHandlerPlugin);
 
   // 2. Register Health Endpoints (Liveness and Readiness)
   server.register(healthPlugin, {
@@ -36,6 +41,8 @@ const buildService = async () => {
   return server;
 };
 ```
+
+Tracing must be initialized exactly once during service startup, before the service starts accepting HTTP requests or processing background work. Development and test environments sample 100% of traces by default. Production sampling may be configured with `OTEL_TRACES_SAMPLER_RATIO`.
 
 ## 2. Using the Logger
 
@@ -70,13 +77,10 @@ logger.info({ payload: request.body }, 'Received request'); // BAD
 When making synchronous calls to other services, you must forward the active correlation ID and trace context. 
 
 ```typescript
-import { getCorrelationId, getTraceContext } from '@forgekit/shared-observability';
+import { injectObservabilityHeaders } from '@forgekit/shared-observability';
 
 await fetch('http://another-service/api', {
-  headers: {
-    'x-correlation-id': getCorrelationId(),
-    'traceparent': getTraceContext()
-  }
+  headers: injectObservabilityHeaders()
 });
 ```
 
@@ -84,13 +88,14 @@ await fetch('http://another-service/api', {
 When publishing events to a broker (e.g., RabbitMQ), attach the context to the message headers/metadata.
 
 ```typescript
+import { injectObservabilityHeaders } from '@forgekit/shared-observability';
+
 channel.publish('exchange', 'routingKey', Buffer.from(JSON.stringify(payload)), {
-  headers: {
-    'x-correlation-id': getCorrelationId(),
-    'traceparent': getTraceContext()
-  }
+  headers: injectObservabilityHeaders()
 });
 ```
+
+Message consumers must restore both identifiers before handling the message. Processing failures must be logged with correlation and trace context, then integrated with retry or dead-letter behavior where the broker supports it.
 
 ## 4. Custom Metrics
 
@@ -107,3 +112,5 @@ const myBusinessCounter = new metrics.Counter({
 // Increment later in code
 myBusinessCounter.inc();
 ```
+
+For meaningful business or system operations, prefer `withOperationTelemetry`, `withDependencyTelemetry`, and `withMessageTelemetry`. Do not wrap trivial helper functions. Operation and dependency names must be stable normalized labels such as `items.create` or `postgres/items.create`; never include IDs, usernames, raw URLs, payload values, or other high-cardinality data.

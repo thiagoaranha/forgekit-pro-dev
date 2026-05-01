@@ -1,19 +1,23 @@
 import Fastify from 'fastify';
-import { healthPlugin, logger, observabilityPlugin } from '@forgekit/shared-observability';
+import {
+    healthPlugin,
+    initializeTracing,
+    logger,
+    observabilityErrorHandlerPlugin,
+    observabilityPlugin,
+} from '@forgekit/shared-observability';
 import { loadConfig } from './infrastructure/config/service-config';
-import { InMemoryMetrics } from './infrastructure/metrics/in-memory-metrics';
-import { registerErrorHandler } from './transport/http/error-handler';
 import { registerRoutes } from './transport/http/register-routes';
 
 const SERVICE_NAME = '{{SERVICE_NAME}}';
+initializeTracing({ serviceName: SERVICE_NAME });
 
 const buildService = async () => {
     const server = Fastify({ logger: false });
-    const metrics = new InMemoryMetrics();
 
     server.register(observabilityPlugin, { serviceName: SERVICE_NAME });
+    server.register(observabilityErrorHandlerPlugin);
     server.register(healthPlugin, { serviceName: SERVICE_NAME, readinessChecks: [] });
-    registerErrorHandler(server, metrics);
     registerRoutes(server);
 
     return server;

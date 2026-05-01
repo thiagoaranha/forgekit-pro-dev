@@ -247,9 +247,14 @@ function buildGatewayProxyBlock(serviceName, servicePort) {
         const user = request.user as any;
         request.headers['x-forgekit-user-id'] = user.sub;
         request.headers['x-forgekit-role'] = user.role;
-        request.headers['x-correlation-id'] = request.headers['x-correlation-id'] || getCorrelationId();
+        Object.assign(request.headers, injectObservabilityHeaders());
       } catch (err) {
-        reply.code(401).send({ error: 'Unauthorized', message: 'Valid dev token is required' });
+        reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Valid dev token is required',
+          correlationId: getCorrelationId(),
+          traceId: getTraceId(),
+        });
       }
     }
   });`;

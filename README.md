@@ -84,7 +84,7 @@ ForgeKit is designed to get your local environment running in minutes.
    ```
 
 3. **Access endpoints:**
-   The API Gateway and services will be available locally. You can verify health via the standard health check endpoints (e.g., `http://localhost:3000/health`).
+   The API Gateway and services will be available locally. You can verify health via the standard health check endpoints (e.g., `http://localhost:3000/health/live` and `http://localhost:3000/health/ready`).
 
 ## Example Flow
 
@@ -107,7 +107,7 @@ This command generates a new service based on the standard template. The generat
 - Standardized directory structure (Transport, Application, Domain, Infra)
 - Configured logging and environment variable validation
 - Initial unit and integration test setups
-- Health check endpoints (`/health/liveness`, `/health/readiness`)
+- Health check endpoints (`/health/live`, `/health/ready`)
 - Boilerplate configuration
 
 ## Development Principles
@@ -126,6 +126,8 @@ Production systems require absolute visibility. ForgeKit includes:
 - **Correlation ID Propagation:** Every request is uniquely tagged, allowing tracing across service boundaries.
 - **Structured Logs:** Consistent, queryable log formats across all applications and shared packages.
 - **Readiness and Liveness Checks:** Built-in Kubernetes-compatible health endpoints for safe deployments and traffic routing.
+  - Gateway liveness reflects process health only; gateway readiness reflects ability to accept traffic and currently has no critical synchronous dependency.
+  - Example service liveness reflects process health only; example-service readiness depends on PostgreSQL via Prisma.
 - **Metrics Support:** Extensible hooks prepared for metrics integration.
 
 ## Authentication (Development Baseline)
