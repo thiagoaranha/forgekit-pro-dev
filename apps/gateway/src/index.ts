@@ -42,27 +42,6 @@ const buildGateway = async () => {
     }
   });
 
-  // SCAFFOLD EXAMPLE — Proxy for test-service.
-  // Requests to /api/test-service/* are forwarded to the test-service service.
-  server.register(httpProxy, {
-    upstream: process.env.TEST_SERVICE_SERVICE_URL || 'http://localhost:3002',
-    prefix: '/api/test-service',
-    preHandler: async (request, reply) => {
-      if (request.url.includes('/health/')) return;
-      try {
-        await request.jwtVerify();
-        const user = request.user as any;
-        request.headers['x-forgekit-user-id'] = user.sub;
-        request.headers['x-forgekit-role'] = user.role;
-        request.headers['x-correlation-id'] = getCorrelationId();
-        request.headers['traceparent'] = getTraceContext();
-      } catch (err) {
-        logger.warn({ err, path: request.url }, 'Gateway authentication failed');
-        return reply.code(401).send({ error: 'Unauthorized', message: 'Valid dev token is required', correlationId: getCorrelationId() });
-      }
-    }
-  });
-
   return server;
 };
 
