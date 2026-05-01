@@ -21,6 +21,14 @@ This template is the baseline used by `pnpm scaffold <service-name>`.
 - Error responses must use the standard shape: `code`, `message`, `traceId`.
 - Liveness and readiness endpoints must remain semantically distinct.
 - Metrics endpoint must expose request count, error rate, and latency signals.
+- Tracing must be initialized once at startup before serving requests or processing background work.
+- Operation and dependency telemetry labels must be normalized stable names, never IDs or user-specific data.
+
+## Health Semantics
+
+- Liveness (`/health/live`): process health only; it must not call databases, brokers, or external APIs.
+- Readiness (`/health/ready`): traffic readiness; add required synchronous dependencies to `readinessChecks`.
+- Scaffolded services start with no critical readiness dependencies. Before production, document each dependency that affects readiness in the service README.
 
 ## Testing Baseline
 

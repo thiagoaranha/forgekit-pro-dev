@@ -2,7 +2,15 @@
 // This module demonstrates RabbitMQ publish/consume with correlation ID propagation.
 // It is safe to delete or restructure once you have real domain events in place.
 
-import { logger } from '@forgekit/shared-observability';
+import {
+    extractObservabilityContextFromHeaders,
+    getCorrelationId,
+    getTraceContext,
+    injectObservabilityHeaders,
+    logger,
+    runWithObservabilityContext,
+    withMessageTelemetry,
+} from '@forgekit/shared-observability';
 
 // Exchange and queue are namespaced to avoid conflicts with other services.
 const EXCHANGE_NAME = '{{SERVICE_NAME}}.events';
@@ -12,6 +20,7 @@ const ROUTING_KEY = 'example.created';
 export type ExampleEventPayload = {
     id: string;
     correlationId?: string;
+    traceparent?: string;
     occurredAt: string;
 };
 
@@ -33,14 +42,24 @@ export async function publishExampleEvent(
     await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
 
     const content = Buffer.from(JSON.stringify(payload));
+    const observabilityHeaders = injectObservabilityHeaders({
+        ...(payload.correlationId ? { 'x-correlation-id': payload.correlationId } : {}),
+        ...(payload.traceparent ? { traceparent: payload.traceparent } : {}),
+    });
+
     channel.publish(EXCHANGE_NAME, ROUTING_KEY, content, {
         contentType: 'application/json',
-        correlationId: payload.correlationId,
+        correlationId: observabilityHeaders['x-correlation-id'],
+        headers: observabilityHeaders,
         persistent: true,
     });
 
     logger.info(
-        { correlationId: payload.correlationId, exchange: EXCHANGE_NAME, routingKey: ROUTING_KEY },
+        {
+            exchange: EXCHANGE_NAME,
+            routingKey: ROUTING_KEY,
+            traceparent: observabilityHeaders.traceparent,
+        },
         'Example event published'
     );
 }
@@ -57,6 +76,7 @@ export async function startExampleConsumer(channel: {
     assertQueue: (name: string, opts: object) => Promise<{ queue: string }>;
     bindQueue: (queue: string, exchange: string, routingKey: string) => Promise<void>;
     consume: (queue: string, handler: (msg: unknown) => void) => Promise<void>;
+    nack?: (msg: unknown, allUpTo?: boolean, requeue?: boolean) => void;
 }): Promise<void> {
     await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
     await channel.assertQueue(QUEUE_NAME, { durable: true });
@@ -69,18 +89,43 @@ export async function startExampleConsumer(channel: {
         }
 
         try {
-            const raw = msg as { content: Buffer; properties: { correlationId?: string } };
+            const raw = msg as {
+                content: Buffer;
+                properties: {
+                    correlationId?: string;
+                    headers?: Record<string, string | string[] | undefined>;
+                };
+            };
             const payload: ExampleEventPayload = JSON.parse(raw.content.toString());
-            const correlationId = raw.properties.correlationId ?? payload.correlationId;
-
-            logger.info(
-                { correlationId, queue: QUEUE_NAME, payload },
-                'Example event consumed'
+            const context = extractObservabilityContextFromHeaders(
+                {
+                    ...raw.properties.headers,
+                    'x-correlation-id': raw.properties.correlationId ?? payload.correlationId,
+                    traceparent: raw.properties.headers?.traceparent ?? payload.traceparent ?? getTraceContext(),
+                },
+                '{{SERVICE_NAME}}'
             );
 
-            // Replace with idempotent domain processing logic.
+            runWithObservabilityContext(context, () =>
+                withMessageTelemetry('example_event.consume', { attributes: { queue: QUEUE_NAME } }, () => {
+                    logger.info({ queue: QUEUE_NAME, eventId: payload.id }, 'Example event consumed');
+
+                    // Replace with idempotent domain processing logic.
+                })
+            );
         } catch (error) {
-            logger.error({ error, queue: QUEUE_NAME }, 'Failed to process example event');
+            logger.error(
+                {
+                    err: error,
+                    queue: QUEUE_NAME,
+                    correlationId: getCorrelationId(),
+                    traceparent: getTraceContext(),
+                },
+                'Failed to process example event'
+            );
+
+            // Broker-specific implementations should route exhausted failures to retry or DLQ here.
+            channel.nack?.(msg, false, false);
         }
     });
 

@@ -59,6 +59,186 @@ function parseScenarios(content) {
 function checkEvidence(req) {
     const desc = req.description.toLowerCase();
     const searchPatterns = [];
+    const root = process.cwd();
+    const read = loc => {
+        const filePath = path.join(root, loc);
+        return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+    };
+    const containsAll = (content, values) => values.every(value => content.includes(value));
+    const sharedObservability = read('packages/shared-observability/src/index.ts');
+    const gateway = read('apps/gateway/src/index.ts');
+    const exampleService = read('apps/services/example-service/src/index.ts');
+    const exampleItems = read('apps/services/example-service/src/routes/items.ts');
+    const serviceTemplate = read('packages/service-template/src/index.ts');
+    const templateMessaging = read('packages/service-template/src/infrastructure/messaging/example-messaging.ts');
+    const quickstart = read('specs/008-forgekit-observability/quickstart.md');
+    const contract = read('specs/008-forgekit-observability/contracts/observability-compliance-review.md');
+
+    if (specDir.includes('008-forgekit-observability')) {
+        if (desc.includes('correlation id') || desc.includes('x-correlation-id')) {
+            searchPatterns.push({
+                name: 'Correlation Context',
+                check: () =>
+                    containsAll(sharedObservability, ['x-correlation-id', 'isValidCorrelationId', 'generateCorrelationId'])
+                    && gateway.includes('injectObservabilityHeaders')
+                        ? 'Shared UUIDv4 validation/generation and gateway propagation found'
+                        : null
+            });
+        }
+
+        if (desc.includes('trace') || desc.includes('tracing') || desc.includes('span')) {
+            searchPatterns.push({
+                name: 'OpenTelemetry Tracing',
+                check: () =>
+                    containsAll(sharedObservability, ['@opentelemetry/api', 'initializeTracing', 'startSpan', 'TraceIdRatioBasedSampler'])
+                    && gateway.includes('initializeTracing')
+                    && exampleService.includes('initializeTracing')
+                        ? 'OpenTelemetry tracing, startup initialization, spans, and sampling found'
+                        : null
+            });
+        }
+
+        if (desc.includes('sampling')) {
+            searchPatterns.push({
+                name: 'Default Sampling Strategy',
+                check: () =>
+                    containsAll(sharedObservability, ['defaultSamplingRatio', 'OTEL_TRACES_SAMPLER_RATIO', 'return 1'])
+                        ? 'Development/test 100% sampling and production ratio configuration found'
+                        : null
+            });
+        }
+
+        if (desc.includes('log')) {
+            searchPatterns.push({
+                name: 'Structured Logging',
+                check: () =>
+                    containsAll(sharedObservability, ['pino({', 'timestamp', 'serviceName', 'correlationId', 'traceparent', 'redact'])
+                        ? 'Structured Pino logger with required context and redaction found'
+                        : null
+            });
+        }
+
+        if (desc.includes('secret') || desc.includes('sensitive') || desc.includes('sanitize')) {
+            searchPatterns.push({
+                name: 'Sanitization',
+                check: () =>
+                    containsAll(sharedObservability, ['redact', 'password', 'token', 'secret', 'authorization', 'connectionString'])
+                        ? 'Default sensitive-field redaction found'
+                        : null
+            });
+        }
+
+        if (desc.includes('metric') || desc.includes('latency') || desc.includes('error rate') || desc.includes('operation count')) {
+            searchPatterns.push({
+                name: 'Metrics Baseline',
+                check: () =>
+                    containsAll(sharedObservability, [
+                        '/metrics',
+                        'http_requests_total',
+                        'http_request_duration_seconds',
+                        'http_request_error_rate',
+                        'operations_total',
+                        'dependency_calls_total',
+                        'normalizeTelemetryLabel'
+                    ])
+                        ? 'HTTP, operation, dependency, latency, error-rate, and normalized-label metrics found'
+                        : null
+            });
+        }
+
+        if (desc.includes('liveness') || desc.includes('readiness') || desc.includes('health')) {
+            searchPatterns.push({
+                name: 'Health Signals',
+                check: () =>
+                    containsAll(sharedObservability, ['/health/live', '/health/ready', 'readinessChecks'])
+                    && exampleService.includes('postgres')
+                        ? 'Standard live/ready endpoints and example dependency readiness found'
+                        : null
+            });
+        }
+
+        if (desc.includes('error')) {
+            searchPatterns.push({
+                name: 'Error Diagnostics',
+                check: () =>
+                    containsAll(sharedObservability, ['observabilityErrorHandlerPlugin', 'classification', 'correlationId', 'traceId', 'logger.error'])
+                    && exampleService.includes('observabilityErrorHandlerPlugin')
+                    && exampleItems.includes('traceId')
+                        ? 'Standard error handler, traceable responses, and sanitized error logs found'
+                        : null
+            });
+        }
+
+        if (desc.includes('message') || desc.includes('asynchronous') || desc.includes('event') || desc.includes('retry') || desc.includes('failure channel')) {
+            searchPatterns.push({
+                name: 'Messaging Context',
+                check: () =>
+                    containsAll(templateMessaging, ['traceparent', 'injectObservabilityHeaders', 'extractObservabilityContextFromHeaders', 'withMessageTelemetry', 'nack'])
+                        ? 'Async message correlation, trace context, failure logging, and retry/DLQ hook found'
+                        : null
+            });
+        }
+
+        if (desc.includes('dependency') || desc.includes('long-running') || desc.includes('key operations')) {
+            searchPatterns.push({
+                name: 'Operation and Dependency Telemetry',
+                check: () =>
+                    containsAll(sharedObservability, ['withOperationTelemetry', 'withDependencyTelemetry', 'operation_duration_seconds'])
+                    && exampleItems.includes('withOperationTelemetry')
+                        ? 'Operation/dependency spans and metrics found'
+                        : null
+            });
+        }
+
+        if (desc.includes('document')) {
+            searchPatterns.push({
+                name: 'Observability Documentation',
+                check: () =>
+                    containsAll(quickstart, ['initializeTracing', 'OTEL_TRACES_SAMPLER_RATIO'])
+                    && contract.includes('Tracing Startup')
+                        ? 'Quickstart and compliance contract document observability obligations'
+                        : null
+            });
+        }
+
+        if (desc.includes('shared observability') || desc.includes('consistent') || desc.includes('diverge') || desc.includes('production-ready')) {
+            searchPatterns.push({
+                name: 'Shared Compliance Contract',
+                check: () =>
+                    containsAll(serviceTemplate, ['observabilityPlugin', 'observabilityErrorHandlerPlugin', 'healthPlugin'])
+                    && contract.includes('No Domain Leakage')
+                        ? 'Shared utilities and review contract enforce consistent service behavior'
+                        : null
+            });
+        }
+
+        if (
+            desc.includes('mandatory service capability')
+            || desc.includes('every forgekit service')
+            || desc.includes('existing services modified')
+            || desc.includes('preserve or improve compliance')
+        ) {
+            searchPatterns.push({
+                name: 'Mandatory Service Baseline',
+                check: () =>
+                    containsAll(gateway, ['initializeTracing', 'observabilityPlugin', 'healthPlugin'])
+                    && containsAll(exampleService, ['initializeTracing', 'observabilityPlugin', 'observabilityErrorHandlerPlugin', 'healthPlugin'])
+                    && containsAll(serviceTemplate, ['initializeTracing', 'observabilityPlugin', 'observabilityErrorHandlerPlugin', 'healthPlugin'])
+                        ? 'Gateway, example service, and service template use the mandatory observability baseline'
+                        : null
+            });
+        }
+
+        if (desc.includes('vendor') || desc.includes('dashboard') || desc.includes('collector') || desc.includes('infrastructure-level')) {
+            searchPatterns.push({
+                name: 'Vendor-Neutral Boundary',
+                check: () =>
+                    quickstart.includes('collector') || sharedObservability.includes('@opentelemetry')
+                        ? 'OpenTelemetry implementation remains vendor-neutral with no required collector/dashboard'
+                        : null
+            });
+        }
+    }
 
     // 1. Dockerfile checks
     if (desc.includes('dockerfile')) {

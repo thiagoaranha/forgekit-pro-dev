@@ -1,20 +1,31 @@
 import Fastify from 'fastify';
 import jwt from '@fastify/jwt';
 import httpProxy from '@fastify/http-proxy';
-import { logger, getCorrelationId } from '@forgekit/shared-observability';
+import {
+  getCorrelationId,
+  getTraceId,
+  healthPlugin,
+  initializeTracing,
+  injectObservabilityHeaders,
+  logger,
+  observabilityPlugin,
+} from '@forgekit/shared-observability';
 import authRoutes from './routes/auth';
-import healthRoutes from './routes/health';
+
+const SERVICE_NAME = 'gateway';
+initializeTracing({ serviceName: SERVICE_NAME });
 
 const buildGateway = async () => {
   const server = Fastify({ logger: false }); // We use our own logger instance inside handlers or inject it
+
+  server.register(observabilityPlugin, { serviceName: SERVICE_NAME });
 
   // Register JWT for Dev Tokens
   server.register(jwt, {
     secret: process.env.JWT_SECRET || 'forgekit-local-dev-secret'
   });
 
-  // Health endpoint
-  server.register(healthRoutes);
+  server.register(healthPlugin, { serviceName: SERVICE_NAME });
 
   // Auth endpoint for dev token generation
   server.register(authRoutes, { prefix: '/auth' });
@@ -31,28 +42,15 @@ const buildGateway = async () => {
         const user = request.user as any;
         request.headers['x-forgekit-user-id'] = user.sub;
         request.headers['x-forgekit-role'] = user.role;
-        request.headers['x-correlation-id'] = request.headers['x-correlation-id'] || getCorrelationId();
+        Object.assign(request.headers, injectObservabilityHeaders());
       } catch (err) {
-        reply.code(401).send({ error: 'Unauthorized', message: 'Valid dev token is required' });
-      }
-    }
-  });
-
-  // SCAFFOLD EXAMPLE — Proxy for test-service.
-  // Requests to /api/test-service/* are forwarded to the test-service service.
-  server.register(httpProxy, {
-    upstream: process.env.TEST_SERVICE_SERVICE_URL || 'http://localhost:3002',
-    prefix: '/api/test-service',
-    preHandler: async (request, reply) => {
-      if (request.url.includes('/health/')) return;
-      try {
-        await request.jwtVerify();
-        const user = request.user as any;
-        request.headers['x-forgekit-user-id'] = user.sub;
-        request.headers['x-forgekit-role'] = user.role;
-        request.headers['x-correlation-id'] = request.headers['x-correlation-id'] || getCorrelationId();
-      } catch (err) {
-        reply.code(401).send({ error: 'Unauthorized', message: 'Valid dev token is required' });
+        logger.warn({ err, path: request.url }, 'Gateway authentication failed');
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Valid dev token is required',
+          correlationId: getCorrelationId(),
+          traceId: getTraceId(),
+        });
       }
     }
   });
