@@ -30,9 +30,18 @@ function printResult(step, status, message = '', suggestion = '') {
     }
 }
 
-function fetchHttp(url) {
+function fetchHttp(url, options = {}) {
     return new Promise((resolve, reject) => {
-        const req = http.get(url, (res) => {
+        const urlObj = new URL(url);
+        const requestOptions = {
+            hostname: urlObj.hostname,
+            port: urlObj.port,
+            path: urlObj.pathname + urlObj.search,
+            method: options.method || 'GET',
+            headers: options.headers || {}
+        };
+
+        const req = http.request(requestOptions, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => resolve({ statusCode: res.statusCode, data }));
@@ -42,7 +51,21 @@ function fetchHttp(url) {
             req.abort();
             reject(new Error('Timeout'));
         });
+        if (options.body) {
+            req.write(JSON.stringify(options.body));
+        }
+        req.end();
     });
+}
+
+async function getDevToken() {
+    try {
+        const { data } = await fetchHttp('http://localhost:3000/auth/dev-token');
+        const { token } = JSON.parse(data);
+        return token;
+    } catch (e) {
+        return null;
+    }
 }
 
 const patterns = [
@@ -74,12 +97,15 @@ function analyzeLogs(containerName) {
                 return pattern;
             }
         }
-    } catch (e) {}
+    } catch (e) { }
     return null;
 }
 
 async function runDiagnostics() {
-    // ─── 0. Detect Capabilities ─────────────────────────────────────────────
+    // ─── 0. Detect Capabilities & Auth ──────────────────────────────────────
+    const token = await getDevToken();
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+
     let hasDatabase = false;
     let hasMessaging = false;
     try {
@@ -94,7 +120,7 @@ async function runDiagnostics() {
     }
 
     // ─── 1. Static Checks ───────────────────────────────────────────────────
-    
+
     // 1.1 Check docker-compose.yml
     let composeContent = '';
     try {
@@ -105,17 +131,17 @@ async function runDiagnostics() {
             const remaining = composeContent.substring(blockStartIndex);
             const nextBlockMatch = remaining.match(/\n  [a-z0-9]/);
             const blockContent = nextBlockMatch ? remaining.substring(0, nextBlockMatch.index) : remaining;
-            
+
             let configOk = true;
             if (hasDatabase && !blockContent.includes('DATABASE_URL')) {
                 printResult(`Compose Config`, false, `Missing DATABASE_URL in '${serviceName}' block`, `Add DATABASE_URL to the service environment in docker-compose.yml`);
                 configOk = false;
-            } 
+            }
             if (hasMessaging && !blockContent.includes('RABBITMQ_URL')) {
                 printResult(`Compose Config`, false, `Missing RABBITMQ_URL in '${serviceName}' block`, `Add RABBITMQ_URL to the service environment in docker-compose.yml`);
                 configOk = false;
-            } 
-            
+            }
+
             if (configOk) {
                 const envs = [];
                 if (hasDatabase) envs.push('DATABASE_URL');
@@ -143,19 +169,19 @@ async function runDiagnostics() {
     }
 
     // ─── 2. Runtime Checks ──────────────────────────────────────────────────
-    
+
     let isContainerRunning = false;
     let actualContainerName = '';
     let isContainerExited = false;
     try {
         // Use 'docker ps -a' to find stopped containers as well
         const psOutput = execSync(`docker ps -a --filter "label=com.docker.compose.service=${serviceName}" --format "{{.Names}}|{{.Status}}"`, { encoding: 'utf8' }).trim();
-        
+
         if (psOutput) {
             const lines = psOutput.split('\n');
             const [name, status] = lines[0].split('|');
             actualContainerName = name;
-            
+
             if (status.includes('Up')) {
                 isContainerRunning = true;
                 printResult(`Container Status`, true, `Container '${name}' is running (${status})`);
@@ -178,7 +204,7 @@ async function runDiagnostics() {
         if (issue) {
             console.log(`\x1b[31m❌ Detected Issue: ${issue.diagnosis}\x1b[0m`);
             console.log(`   └─ 💡 FIX: ${issue.fixMessage}`);
-            
+
             if (issue.command) {
                 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
                 await new Promise(resolve => {
@@ -221,11 +247,11 @@ async function runDiagnostics() {
     }
 
     try {
-        const { statusCode, data } = await fetchHttp(`http://localhost:3000/api/${serviceName}/items`);
+        const { statusCode, data } = await fetchHttp(`http://localhost:3000/api/${serviceName}/items`, { headers: authHeader });
         if (statusCode === 200) {
             printResult(`Sync Endpoint`, true, `GET /api/${serviceName}/items returned 200 OK`);
         } else if (statusCode === 401 || statusCode === 403) {
-             printResult(`Sync Endpoint`, true, `Endpoint secured (returned ${statusCode}), request reached service.`);
+            printResult(`Sync Endpoint`, false, `Endpoint blocked (returned ${statusCode})`, `The Doctor could not authenticate. Check if the /auth/dev-token endpoint is working.`);
         } else {
             printResult(`Sync Endpoint`, false, `Endpoint returned status ${statusCode}`, `Check the service routes.`);
         }
@@ -236,10 +262,11 @@ async function runDiagnostics() {
     // Only check messaging if the service actually has the messaging capability
     if (hasMessaging) {
         try {
-            await fetchHttp(`http://localhost:3000/api/${serviceName}/items`);
+            await fetchHttp(`http://localhost:3000/api/${serviceName}/items`, { headers: authHeader });
             await new Promise(resolve => setTimeout(resolve, 1500));
-            
+
             const logs = execSync(`docker logs ${actualContainerName} --tail 100 2>&1`, { encoding: 'utf8' });
+
             // Look for specific consumption markers, not just general observability strings
             if (logs.includes('event consumed') || logs.includes('Processed') || logs.includes('Handling message')) {
                 printResult(`Async Messaging`, true, `Found consumer processing logs`);
