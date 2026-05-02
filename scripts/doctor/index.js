@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const http = require('http');
+const readline = require('readline');
 
 const COMPOSE_FILE_PATH = path.join(__dirname, '../../infra/compose/docker-compose.yml');
 const GATEWAY_INDEX_PATH = path.join(__dirname, '../../apps/gateway/src/index.ts');
@@ -29,7 +30,6 @@ function printResult(step, status, message = '', suggestion = '') {
     }
 }
 
-// Helper for HTTP requests
 function fetchHttp(url) {
     return new Promise((resolve, reject) => {
         const req = http.get(url, (res) => {
@@ -45,7 +45,54 @@ function fetchHttp(url) {
     });
 }
 
+const patterns = [
+    {
+        regex: /PrismaClientInitializationError|relation.*does not exist|database.*does not exist/i,
+        diagnosis: 'Missing Database Schema or Unreachable DB',
+        fixMessage: `Run 'pnpm --filter ${serviceName} run db:push' to sync the schema.`,
+        command: `pnpm --filter ${serviceName} run db:push`
+    },
+    {
+        regex: /ECONNREFUSED/i,
+        diagnosis: 'Connection Refused (Likely RabbitMQ or Postgres down)',
+        fixMessage: `Ensure dependencies are healthy via 'docker compose ps'.`,
+        command: null
+    },
+    {
+        regex: /Cannot find module|Cannot resolve module/i,
+        diagnosis: 'Missing dependency or build failed',
+        fixMessage: `Run 'pnpm install' and 'pnpm --filter ${serviceName} build'.`,
+        command: `pnpm install && pnpm --filter ${serviceName} build`
+    }
+];
+
+function analyzeLogs(containerName) {
+    try {
+        const logs = execSync(`docker logs ${containerName} --tail 100 2>&1`, { encoding: 'utf8' });
+        for (const pattern of patterns) {
+            if (pattern.regex.test(logs)) {
+                return pattern;
+            }
+        }
+    } catch (e) {}
+    return null;
+}
+
 async function runDiagnostics() {
+    // ─── 0. Detect Capabilities ─────────────────────────────────────────────
+    let hasDatabase = false;
+    let hasMessaging = false;
+    try {
+        const pkgPath = path.join(__dirname, `../../apps/services/${serviceName}/package.json`);
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        hasDatabase = !!(pkg.dependencies && pkg.dependencies['@prisma/client']);
+        hasMessaging = !!(pkg.dependencies && pkg.dependencies['amqplib']);
+    } catch (e) {
+        // Fallback to true to be safe if package.json is missing (not standard ForgeKit)
+        hasDatabase = true;
+        hasMessaging = true;
+    }
+
     // ─── 1. Static Checks ───────────────────────────────────────────────────
     
     // 1.1 Check docker-compose.yml
@@ -56,16 +103,24 @@ async function runDiagnostics() {
         if (serviceBlockRegex.test(composeContent)) {
             const blockStartIndex = composeContent.search(new RegExp(`^  ${serviceName}:`, 'm'));
             const remaining = composeContent.substring(blockStartIndex);
-            // Find the next line that starts with exactly 2 spaces (next service or top level)
             const nextBlockMatch = remaining.match(/\n  [a-z0-9]/);
             const blockContent = nextBlockMatch ? remaining.substring(0, nextBlockMatch.index) : remaining;
             
-            if (!blockContent.includes('DATABASE_URL')) {
+            let configOk = true;
+            if (hasDatabase && !blockContent.includes('DATABASE_URL')) {
                 printResult(`Compose Config`, false, `Missing DATABASE_URL in '${serviceName}' block`, `Add DATABASE_URL to the service environment in docker-compose.yml`);
-            } else if (!blockContent.includes('RABBITMQ_URL')) {
+                configOk = false;
+            } 
+            if (hasMessaging && !blockContent.includes('RABBITMQ_URL')) {
                 printResult(`Compose Config`, false, `Missing RABBITMQ_URL in '${serviceName}' block`, `Add RABBITMQ_URL to the service environment in docker-compose.yml`);
-            } else {
-                printResult(`Compose Config`, true, `Found required ENVs (DATABASE_URL, RABBITMQ_URL)`);
+                configOk = false;
+            } 
+            
+            if (configOk) {
+                const envs = [];
+                if (hasDatabase) envs.push('DATABASE_URL');
+                if (hasMessaging) envs.push('RABBITMQ_URL');
+                printResult(`Compose Config`, true, `Found required ENVs (${envs.join(', ') || 'None required'})`);
             }
         } else {
             printResult(`Compose Registration`, false, `Service '${serviceName}' not found in docker-compose.yml`, `Run 'pnpm scaffold ${serviceName}' to register the service, or add it manually.`);
@@ -91,27 +146,62 @@ async function runDiagnostics() {
     
     let isContainerRunning = false;
     let actualContainerName = '';
+    let isContainerExited = false;
     try {
-        // Try to find the container name dynamically using docker ps
-        const psOutput = execSync(`docker ps --filter "label=com.docker.compose.service=${serviceName}" --format "{{.Names}}|{{.Status}}"`, { encoding: 'utf8' }).trim();
+        // Use 'docker ps -a' to find stopped containers as well
+        const psOutput = execSync(`docker ps -a --filter "label=com.docker.compose.service=${serviceName}" --format "{{.Names}}|{{.Status}}"`, { encoding: 'utf8' }).trim();
         
         if (psOutput) {
-            const [name, status] = psOutput.split('|');
+            const lines = psOutput.split('\n');
+            const [name, status] = lines[0].split('|');
             actualContainerName = name;
+            
             if (status.includes('Up')) {
                 isContainerRunning = true;
                 printResult(`Container Status`, true, `Container '${name}' is running (${status})`);
             } else {
-                printResult(`Container Status`, false, `Container '${name}' is not running`, `Run 'pnpm boot' to start the docker stack.`);
+                isContainerExited = true;
+                printResult(`Container Status`, false, `Container '${name}' is not running (${status})`);
             }
         } else {
-            printResult(`Container Status`, false, `No container found for service '${serviceName}'`, `Run 'pnpm boot' to start the docker stack.`);
+            printResult(`Container Status`, false, `No container found for service '${serviceName}'`, `Ensure 'pnpm boot' was run and the service is in docker-compose.yml.`);
         }
     } catch (err) {
         printResult(`Container Status`, false, `Docker command failed`, `Ensure Docker is running and accessible.`);
     }
 
-    // If container isn't running, network checks will definitely fail, so we can skip them to avoid timeouts.
+    // ─── Self-Healing (Log Analysis) ────────────────────────────────────────
+
+    if (isContainerExited && actualContainerName) {
+        console.log(`\n🔍 Analyzing logs for container '${actualContainerName}'...`);
+        const issue = analyzeLogs(actualContainerName);
+        if (issue) {
+            console.log(`\x1b[31m❌ Detected Issue: ${issue.diagnosis}\x1b[0m`);
+            console.log(`   └─ 💡 FIX: ${issue.fixMessage}`);
+            
+            if (issue.command) {
+                const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+                await new Promise(resolve => {
+                    rl.question(`\n❓ Would you like to run the suggested fix now? (y/N): `, (answer) => {
+                        if (answer.toLowerCase() === 'y') {
+                            console.log(`\n🚀 Running: ${issue.command}...`);
+                            try {
+                                execSync(issue.command, { stdio: 'inherit', cwd: path.join(__dirname, '../../') });
+                                console.log(`\x1b[32m✅ Fix applied.\x1b[0m Try running 'pnpm boot' again.`);
+                            } catch (e) {
+                                console.log(`\x1b[31m❌ Failed to apply fix.\x1b[0m Run the command manually to see detailed errors.`);
+                            }
+                        }
+                        resolve();
+                        rl.close();
+                    });
+                });
+            }
+        } else {
+            console.log(`   └─ Could not identify a specific error pattern. Run 'docker logs ${actualContainerName}' manually.`);
+        }
+    }
+
     if (!isContainerRunning) {
         console.log(`\n⚠️  Skipping network checks because container is down.\n`);
         process.exit(1);
@@ -119,7 +209,6 @@ async function runDiagnostics() {
 
     // ─── 3. Network Checks ──────────────────────────────────────────────────
 
-    // 3.1 Health Endpoint Check
     try {
         const { statusCode } = await fetchHttp(`http://localhost:3000/api/${serviceName}/health/live`);
         if (statusCode === 200) {
@@ -131,7 +220,6 @@ async function runDiagnostics() {
         printResult(`Health Endpoint`, false, `Failed to reach health endpoint: ${err.message}`, `Ensure the gateway bypass for health checks is working.`);
     }
 
-    // 3.2 Sync Endpoint Check
     try {
         const { statusCode, data } = await fetchHttp(`http://localhost:3000/api/${serviceName}/items`);
         if (statusCode === 200) {
@@ -145,22 +233,24 @@ async function runDiagnostics() {
         printResult(`Sync Endpoint`, false, `Failed to reach sync endpoint: ${err.message}`);
     }
 
-    // 3.3 Async Check (Log sniffing)
-    try {
-        // Trigger the async flow
-        await fetchHttp(`http://localhost:3000/api/${serviceName}/items`);
-        
-        // Wait for consumer to process
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const logs = execSync(`docker logs ${actualContainerName} --tail 100`, { encoding: 'utf8' });
-        if (logs.includes('Processed item_created event') || logs.includes('correlationId') || logs.includes('x-correlation-id')) {
-            printResult(`Async Messaging`, true, `Found consumer processing logs`);
-        } else {
-            printResult(`Async Messaging`, false, `Did not find consumer processing logs recently`, `Check RabbitMQ connectivity or service logs.`);
+    // Only check messaging if the service actually has the messaging capability
+    if (hasMessaging) {
+        try {
+            await fetchHttp(`http://localhost:3000/api/${serviceName}/items`);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            const logs = execSync(`docker logs ${actualContainerName} --tail 100 2>&1`, { encoding: 'utf8' });
+            // Look for specific consumption markers, not just general observability strings
+            if (logs.includes('event consumed') || logs.includes('Processed') || logs.includes('Handling message')) {
+                printResult(`Async Messaging`, true, `Found consumer processing logs`);
+            } else {
+                printResult(`Async Messaging`, false, `Did not find consumer processing logs recently`, `Check RabbitMQ connectivity or service logs.`);
+            }
+        } catch (err) {
+            printResult(`Async Messaging`, false, `Could not verify async logs: ${err.message}`);
         }
-    } catch (err) {
-        printResult(`Async Messaging`, false, `Could not verify async logs: ${err.message}`);
+    } else {
+        console.log(`\nℹ️  Skipping Async Messaging check (capability not detected in package.json).\n`);
     }
 
     // ─── Finish ─────────────────────────────────────────────────────────────

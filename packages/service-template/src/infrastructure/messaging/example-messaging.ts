@@ -34,7 +34,7 @@ export type ExampleEventPayload = {
  */
 export async function publishExampleEvent(
     channel: {
-        assertExchange: (name: string, type: string, opts: object) => Promise<void>;
+        assertExchange: (name: string, type: string, opts: object) => Promise<any>;
         publish: (exchange: string, routingKey: string, content: Buffer, opts: object) => boolean;
     },
     payload: ExampleEventPayload
@@ -72,11 +72,11 @@ export async function publishExampleEvent(
  * NOTE: This is a scaffold stub. Replace with your domain event consumer.
  */
 export async function startExampleConsumer(channel: {
-    assertExchange: (name: string, type: string, opts: object) => Promise<void>;
-    assertQueue: (name: string, opts: object) => Promise<{ queue: string }>;
-    bindQueue: (queue: string, exchange: string, routingKey: string) => Promise<void>;
-    consume: (queue: string, handler: (msg: unknown) => void) => Promise<void>;
-    nack?: (msg: unknown, allUpTo?: boolean, requeue?: boolean) => void;
+    assertExchange: (name: string, type: string, opts: object) => Promise<any>;
+    assertQueue: (name: string, opts: object) => Promise<any>;
+    bindQueue: (queue: string, exchange: string, routingKey: string) => Promise<any>;
+    consume: (queue: string, handler: (msg: unknown) => void) => Promise<any>;
+    nack?: (msg: any, allUpTo?: boolean, requeue?: boolean) => void;
 }): Promise<void> {
     await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
     await channel.assertQueue(QUEUE_NAME, { durable: true });
