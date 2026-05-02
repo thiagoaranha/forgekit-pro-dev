@@ -138,7 +138,8 @@ export const initializeTracing = (options: TracingOptions): void => {
     }
 
     const samplingRatio = options.samplingRatio ?? defaultSamplingRatio();
-    const exportToConsole = process.env.NODE_ENV !== 'production' || process.env.OTEL_CONSOLE_EXPORTER === 'true';
+    // Default to false to avoid log clutter, unless explicitly requested.
+    const exportToConsole = process.env.OTEL_CONSOLE_EXPORTER === 'true';
     const spanProcessor = exportToConsole
         ? new SimpleSpanProcessor(new ConsoleSpanExporter())
         : new NoopSpanProcessor();

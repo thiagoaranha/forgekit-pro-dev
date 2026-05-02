@@ -32,7 +32,6 @@ services:
     networks:
       - forgekit-net
 
-
   postgres:
     image: postgres:16-alpine
     environment:
