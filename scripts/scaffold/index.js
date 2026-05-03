@@ -272,6 +272,7 @@ function buildComposeServiceBlock(serviceName, servicePort, withDatabase, withMe
 
     let block = `
   ${serviceName}:
+    container_name: forgekit-${serviceName}
     build:
       context: ../../
       dockerfile: apps/services/${serviceName}/Dockerfile

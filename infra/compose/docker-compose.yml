@@ -1,7 +1,8 @@
-version: '3.8'
+name: forgekit
 
 services:
   gateway:
+    container_name: forgekit-gateway
     build:
       context: ../../
       dockerfile: apps/gateway/Dockerfile
@@ -16,6 +17,7 @@ services:
       - forgekit-net
 
   example-service:
+    container_name: forgekit-example-service
     build:
       context: ../../
       dockerfile: apps/services/example-service/Dockerfile
@@ -33,6 +35,7 @@ services:
       - forgekit-net
 
   postgres:
+    container_name: forgekit-postgres
     image: postgres:16-alpine
     environment:
       - POSTGRES_USER=forgekit
@@ -49,6 +52,7 @@ services:
       - forgekit-net
 
   rabbitmq:
+    container_name: forgekit-rabbitmq
     image: rabbitmq:3-management-alpine
     environment:
       - RABBITMQ_DEFAULT_USER=forgekit

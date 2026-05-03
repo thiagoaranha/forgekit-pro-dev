@@ -128,6 +128,7 @@ A developer needs the scaffolded service to include minimal working example rout
 - **FR-015**: The proxy registration MUST follow the same pattern as the existing `example-service` proxy: it MUST include a `preHandler` that verifies the JWT, injects identity headers (`x-forgekit-user-id`, `x-forgekit-role`), and propagates the correlation ID (`x-correlation-id`).
 - **FR-016**: The proxy upstream URL MUST be read from an environment variable named `<SERVICE_NAME_UPPER>_SERVICE_URL` (e.g., `ORDER_SERVICE_SERVICE_URL` for a service named `order-service`), with a localhost fallback for local development outside Docker.
 - **FR-017**: The scaffold command MUST add the `<SERVICE_NAME_UPPER>_SERVICE_URL` environment variable to the gateway's service block in `infra/compose/docker-compose.yml`, pointing to the new service's Docker network address and allocated port.
+- **FR-022**: The scaffold command MUST assign a fixed container name to the new service in `docker-compose.yml` using the pattern `forgekit-<service-name>` to ensure predictability and clean diagnostic logs.
 
 #### Service Configuration
 
