@@ -602,6 +602,12 @@ export const observabilityPlugin = fp(
                     span.end();
                 }
 
+                // Ignore health check successfull logs
+                const isHealthCheck = request.url.startsWith('/health/');
+                if (isHealthCheck && reply.statusCode < 400) {
+                    return;
+                }
+
                 logger.info(
                     {
                         method: request.method,
