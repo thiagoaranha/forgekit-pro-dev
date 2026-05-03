@@ -38,6 +38,13 @@ ForgeKit solves these problems by providing a standardized, opinionated baseline
 - CI pipeline with enforced quality gates
 - Production-ready service template
 
+## Design Principles
+
+- **Explicit over implicit:** No hidden magic or framework abstraction
+- **Production-first:** Everything is built assuming real-world scale
+- **Isolation by default:** Services must be independently evolvable
+- **Observability is not optional**
+
 ## Architecture Overview
 
 ForgeKit embraces a decoupled, scalable architecture:
@@ -95,20 +102,41 @@ A typical synchronous request flows through the system as follows:
 3. **Service:** Processes the request within its Transport layer, executes Domain logic, and interacts with its dedicated Infrastructure. All structured logs generated include the propagated Correlation ID.
 4. **Response:** The service returns a structured response back through the Gateway to the client.
 
-## Service Scaffolding
+## Service Scaffolding (Zero-Configuration)
 
-Adding a new microservice is trivial using the built-in CLI:
+ForgeKit provides a powerful CLI to bootstrap new services with zero manual configuration. The scaffolding engine handles dependency injection, infrastructure registration, and boilerplate generation.
 
 ```bash
+# Basic service
 pnpm scaffold <service-name>
+
+# Service with Database (Prisma) support
+pnpm scaffold <service-name> --with-database
+
+# Service with Messaging (RabbitMQ) support
+pnpm scaffold <service-name> --with-messaging
 ```
 
-This command generates a new service based on the standard template. The generated service comes pre-configured with:
-- Standardized directory structure (Transport, Application, Domain, Infra)
-- Configured logging and environment variable validation
-- Initial unit and integration test setups
-- Health check endpoints (`/health/live`, `/health/ready`)
-- Boilerplate configuration
+The scaffolding process automatically:
+- **Generates Standard Structure:** Creates all Clean Architecture layers (Transport, Application, Domain, Infra).
+- **Injects Dependencies:** Adds required packages (`prisma`, `amqplib`, etc.) to `package.json` based on selected flags.
+- **Auto-registers Infra:** Injects the service into `docker-compose.yml` with correct network and environment settings.
+- **Integrates with Bootstrap:** Updates the root `pnpm boot` script to include the new service in database synchronization tasks.
+- **Pre-configures Observability:** Sets up structured logging and health check endpoints (`/health/live`, `/health/ready`) out of the box.
+
+## Service Doctor (Intelligent Diagnostics)
+
+Maintaining a complex microservices stack can be challenging. ForgeKit includes a **Service Doctor** to identify and help fix issues automatically.
+
+```bash
+pnpm service:doctor <service-name>
+```
+
+The Doctor doesn't just check if a container is running; it performs deep diagnostics:
+- **Log Analysis:** Automatically extracts and parses logs from failed or crashed containers.
+- **Failure Recognition:** Detects common issues like Prisma initialization errors, missing migrations, or connection timeouts.
+- **Self-Healing Suggestions:** Provides exact commands to fix the identified problems.
+- **Automated Probing:** Issues temporary developer JWTs to bypass security and validate protected health endpoints.
 
 ## Development Principles
 
