@@ -1,0 +1,20 @@
+{
+  "name": "@forgekit/shared-messaging",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "@forgekit/shared-observability": "workspace:*",
+    "@forgekit/shared-security": "workspace:*",
+    "amqplib": "^0.10.4",
+    "prom-client": "^15.1.3"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.5",
+    "typescript": "^5.4.5"
+  }
+}
