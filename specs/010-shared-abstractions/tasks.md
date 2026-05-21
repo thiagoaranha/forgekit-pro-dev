@@ -3,6 +3,7 @@
 **Branch**: `feat/010-shared-abstractions`
 **Source Plan**: [plan.md](./plan.md)
 **Source Spec**: [spec.md](./spec.md)
+**Documentation Status**: Spec is `Approved`; clarification decisions for DLQ routing, fixed retry delay, poison message handling, and metric labels were incorporated on 2026-05-17. The task checklist tracks implementation and verification work, so unchecked implementation items remain pending until the code is aligned with the clarified contract.
 
 ---
 
@@ -10,13 +11,13 @@
 
 **Purpose**: Create all three package skeletons so they build, lint, and are recognized by the pnpm workspace.
 
-- [ ] **T001** [P] Create `packages/shared-error-handling/package.json` with `@forgekit/shared-error-handling` name, workspace dependencies on `@forgekit/shared-observability`, peer dependency on `fastify`, and `fastify-plugin` dependency. Add `build` and `lint` scripts matching existing packages.
+- [ ] **T001** [P] Create `packages/shared-error-handling/package.json` with `@forgekit/shared-error-handling` name, workspace dependencies on `@forgekit/shared-observability`, peer dependency on `fastify`, and `fastify-plugin` dependency. Add Vitest dev dependencies plus `build`, `lint`, `test`, and `test:watch` scripts matching the existing Vitest package pattern.
 - [ ] **T002** [P] Create `packages/shared-error-handling/tsconfig.json` extending `../../tsconfig.base.json` with `outDir: "dist"` and `rootDir: "src"`.
-- [ ] **T003** [P] Create `packages/shared-security/package.json` with `@forgekit/shared-security` name, workspace dependency on `@forgekit/shared-error-handling`, peer dependency on `fastify`, and `fastify-plugin` dependency.
+- [ ] **T003** [P] Create `packages/shared-security/package.json` with `@forgekit/shared-security` name, workspace dependency on `@forgekit/shared-error-handling`, peer dependency on `fastify`, and `fastify-plugin` dependency. Add Vitest dev dependencies plus `build`, `lint`, `test`, and `test:watch` scripts matching the existing Vitest package pattern.
 - [ ] **T004** [P] Create `packages/shared-security/tsconfig.json` extending `../../tsconfig.base.json`.
-- [ ] **T005** [P] Create `packages/shared-messaging/package.json` with `@forgekit/shared-messaging` name, workspace dependency on `@forgekit/shared-observability`, `amqplib` runtime dependency, `@types/amqplib` dev dependency, and `prom-client` dependency.
+- [ ] **T005** [P] Create `packages/shared-messaging/package.json` with `@forgekit/shared-messaging` name, workspace dependency on `@forgekit/shared-observability`, `amqplib` runtime dependency, `@types/amqplib` dev dependency, and `prom-client` dependency. Add Vitest dev dependencies plus `build`, `lint`, `test`, and `test:watch` scripts matching the existing Vitest package pattern.
 - [ ] **T006** [P] Create `packages/shared-messaging/tsconfig.json` extending `../../tsconfig.base.json`.
-- [ ] **T007** Create empty `src/index.ts` barrel files for all three packages. Run `pnpm install` to verify workspace resolution, then `pnpm build` to verify all packages compile.
+- [ ] **T007** Create empty `src/index.ts` barrel files and `vitest.config.ts` files for all three packages. Use the same coverage provider and thresholds as `packages/service-template` (`lines/statements/functions` 80%, `branches` 70%). Run `pnpm install` to verify workspace resolution, then `pnpm build` to verify all packages compile.
 
 **Checkpoint**: All three packages exist, compile, and are visible in the workspace. No functionality yet.
 
@@ -55,6 +56,12 @@
   - Barrel re-exporting: `AppError`, all factory functions, `ErrorResponse`, `toErrorResponse`, `errorHandlerPlugin`.
   - Verify `pnpm build` passes for the package.
   - (FR-052)
+
+- [ ] **T031** [US3] Add unit tests under `packages/shared-error-handling/tests/unit/` covering:
+  - `AppError` constructor and factory defaults.
+  - `toErrorResponse` for operational and unexpected errors, including detail exposure rules.
+  - `errorHandlerPlugin` response status/body and warn vs error logging behavior.
+  - Run `pnpm --filter @forgekit/shared-error-handling test`.
 
 **Checkpoint**: `@forgekit/shared-error-handling` is fully functional. Throwing `validationError('Name is required')` in any Fastify route produces `{ code: 'VALIDATION', message: 'Name is required', correlationId: '...', traceId: '...' }` with status 400.
 
@@ -96,6 +103,13 @@
   - Verify `pnpm build` passes for the package.
   - (FR-052)
 
+- [ ] **T032** [US2] Add unit tests under `packages/shared-security/tests/unit/` covering:
+  - HTTP header extraction for strings, arrays, empty strings, whitespace, and missing values.
+  - RabbitMQ message header extraction, including `Buffer` values.
+  - `injectIdentityHeaders` omission of absent values.
+  - `identityPlugin`, `requireIdentity`, and `requireRole` behavior through Fastify route tests.
+  - Run `pnpm --filter @forgekit/shared-security test`.
+
 **Checkpoint**: `@forgekit/shared-security` is fully functional. A service can `server.register(identityPlugin)` and access `request.identity.userId` in any route handler. Guards work with consistent error responses from `shared-error-handling`.
 
 ---
@@ -109,9 +123,9 @@
 ### Implementation
 
 - [ ] **T017** [US1] Create `packages/shared-messaging/src/types.ts`:
-  - `MessagingClientOptions` — `url`, `serviceName`, optional `reconnect` (maxAttempts, baseDelayMs, maxDelayMs) and `retry` (maxAttempts, baseDelayMs) configs.
+  - `MessagingClientOptions` — `url`, `serviceName`, optional `reconnect` (maxAttempts, baseDelayMs, maxDelayMs) and `retry` (maxAttempts, delayMs) configs. Message retry delay is fixed per client, defaulting to 1s.
   - `PublishOptions` — optional overrides for exchange type, persistent flag, custom headers.
-  - `SubscribeOptions` — optional prefetch count, noAck flag.
+  - `SubscribeOptions` — optional prefetch count, noAck flag, `requireJsonContentType`, and `validate(payload)` callback. Validation failures are treated as `NonRetryableError`.
   - `AssertQueueOptions` — optional durable, exclusive, DLQ configuration overrides.
   - `MessageHandler<T>` — `(payload: T, metadata: MessageMetadata) => Promise<void> | void`.
   - `MessageMetadata` — `correlationId`, `traceparent`, `retryCount`, `identity` (IdentityContext), `headers`.
@@ -136,15 +150,17 @@
   - `parseRetryCount(message)` — reads `x-death` header array, extracts `count` from the first entry matching the original queue. Returns 0 if no `x-death` header present (FR-018).
   - `isRetryExhausted(message, maxAttempts)` — returns `true` when `parseRetryCount >= maxAttempts` (FR-019).
   - `NonRetryableError` class — signals deserialization/schema failures that should bypass retry (FR-023).
-  - DLQ topology helper: `assertQueueWithDlq(channel, queueName, options)` — asserts the main queue with `x-dead-letter-exchange` and `x-dead-letter-routing-key` pointing to a retry exchange, and asserts the `<queue>.dlq` queue (FR-020, FR-021, FR-022).
+  - DLQ topology helper: `assertQueueWithDlq(channel, queueName, options)` — asserts the main queue with `x-dead-letter-exchange` and `x-dead-letter-routing-key` pointing to a retry exchange, asserts a retry queue with fixed TTL configured from `retry.delayMs`, and asserts the `<queue>.dlq` queue (FR-020, FR-021, FR-022).
 
 - [ ] **T021** [US1] Create `packages/shared-messaging/src/consumer.ts`:
   - `subscribe<T>(channel, queue, handler, options, retryPolicy)` function.
   - Extracts `x-correlation-id`, `traceparent` from message `properties.headers` (FR-014).
   - Restores observability context via `runWithObservabilityContext` (FR-016).
   - Wraps handler in `withMessageTelemetry` (FR-016).
-  - Deserializes JSON payload, catches parse errors as `NonRetryableError` (FR-015, FR-023).
-  - On handler error: checks retry count via `x-death`. If retryable and not exhausted: `nack(msg, false, false)` (message goes to retry exchange → back to queue). If exhausted or non-retryable: `nack(msg, false, false)` (routes to DLQ) (FR-019, FR-020, FR-023).
+  - If `requireJsonContentType` is enabled, rejects missing or non-`application/json` content types as `NonRetryableError` before parsing (FR-023c).
+  - Deserializes JSON payload, catches parse errors as `NonRetryableError`, and does not invoke the handler for invalid JSON (FR-015, FR-023, FR-023a).
+  - Runs optional `SubscribeOptions.validate(payload)` before the handler; validator throws/rejections are treated as `NonRetryableError` and bypass retry (FR-023b).
+  - On handler error: checks retry count via `x-death`. If retryable and not exhausted: `nack(msg, false, false)` so RabbitMQ dead-letters to the retry exchange and routes back to the original queue. If exhausted or non-retryable: publish the original payload and headers to `<queue>.dlq` using a confirm channel, wait for confirmation, then `ack(msg)`; if the DLQ publish fails, leave the original message unacked so it is not lost. (FR-019, FR-020, FR-023).
   - On success: `ack(msg)`.
   - (FR-013)
 
@@ -152,9 +168,11 @@
   - Register metrics using `prom-client` (or re-use registry from `shared-observability`):
     - `messaging_published_total` — Counter with `service`, `exchange`, `routing_key` labels.
     - `messaging_consumed_total` — Counter with `service`, `queue`, `outcome` labels.
-    - `messaging_consumer_errors_total` — Counter with `service`, `queue` labels.
-    - `messaging_dlq_total` — Counter with `service`, `queue` labels.
+    - `messaging_consumer_errors_total` — Counter with `service`, `queue`, `error_type` labels.
+    - `messaging_dlq_total` — Counter with `service`, `queue`, `reason` labels.
     - `messaging_processing_duration_seconds` — Histogram with `service`, `queue`, `outcome` labels.
+  - Normalize `outcome` to `success | error`, `error_type` to `handler_error | invalid_json | invalid_content_type | validation_failed | unknown`, and DLQ `reason` to `retry_exhausted | non_retryable | invalid_json | invalid_content_type | validation_failed`.
+  - Do not use correlation IDs, trace IDs, user IDs, raw error messages, payload fields, or other unbounded values as metric labels.
   - (FR-024, FR-025)
 
 - [ ] **T023** [US1] Create `packages/shared-messaging/src/messaging-client.ts`:
@@ -168,6 +186,20 @@
   - Barrel re-exporting: `createMessagingClient`, `MessagingClient`, `MessagingClientOptions`, `PublishOptions`, `SubscribeOptions`, `MessageHandler`, `MessageMetadata`, `NonRetryableError`.
   - Verify `pnpm build` passes for the package.
   - (FR-052)
+
+- [ ] **T033** [US1] Add unit tests under `packages/shared-messaging/tests/unit/` covering:
+  - Retry count parsing from `x-death` headers and retry exhaustion behavior.
+  - Poison message classification for invalid JSON, invalid content type, validator failures, and explicit `NonRetryableError`.
+  - Metric label normalization for `outcome`, `error_type`, and DLQ `reason`.
+  - Publish options preserving headers, `contentType: 'application/json'`, and persistent default.
+  - Run `pnpm --filter @forgekit/shared-messaging test`.
+
+- [ ] **T034** [US1] Add RabbitMQ integration tests under `packages/shared-messaging/tests/integration/` covering:
+  - Publish/consume correlation ID and traceparent propagation.
+  - Retry with fixed TTL delay and `x-death` retry count.
+  - Retry exhaustion publishing to `<queue>.dlq` using confirm-then-ack.
+  - Non-retryable poison messages bypassing retry and reaching DLQ.
+  - Broker readiness check reports connected/disconnected state.
 
 **Checkpoint**: `@forgekit/shared-messaging` is fully functional. A service can create a client, publish events with auto-injected correlation IDs, consume with automatic retry/DLQ, and register broker health checks — all in ~10 lines of service code.
 
@@ -197,9 +229,11 @@
 - [ ] **T027** [P] Run `pnpm build` from root — verify all packages and all existing services compile cleanly.
 - [ ] **T028** [P] Run `pnpm lint` from root — verify all packages pass linting with zero errors.
 - [ ] **T029** [P] Verify that `example-service` still builds and starts correctly with the deprecated shim in `shared-observability`.
-- [ ] **T030** Update the spec status from `Draft` to `Approved` in `specs/010-shared-abstractions/spec.md`.
+- [x] **T030** Confirm `specs/010-shared-abstractions/spec.md` status is `Approved` after clarification updates.
+- [ ] **T035** Run `pnpm test` from root and verify all package test suites pass with coverage thresholds enabled.
+- [ ] **T036** Verify RabbitMQ integration tests are either included in `pnpm test` with an available broker/Testcontainers environment or documented as a separate command gated by an explicit integration-test script.
 
-**Checkpoint**: All packages build, lint, and the existing codebase is unaffected.
+**Checkpoint**: All packages build, lint, pass tests with coverage thresholds, and the existing codebase is unaffected.
 
 ---
 
@@ -212,7 +246,7 @@
 - **Phase 3 (Security)**: Depends on Phase 2 completion (`shared-security` imports from `shared-error-handling`).
 - **Phase 4 (Messaging)**: Depends on Phase 1 completion. Can run in parallel with Phase 3 if desired, but sequential execution is recommended for review quality.
 - **Phase 5 (Deprecation)**: Depends on Phase 2 completion.
-- **Phase 6 (Polish)**: Depends on all previous phases.
+- **Phase 6 (Polish)**: Depends on all previous phases and test tasks T031..T034.
 
 ### Within Each Phase
 
@@ -223,11 +257,11 @@
 
 ```text
 Phase 1: T001..T006 all parallel → T007 sequential (install + verify)
-Phase 2: T008, T009 parallel → T010 (depends on T009) → T011
-Phase 3: T012, T013 parallel → T014 (depends on T012, T013) → T015 (depends on T014) → T016
-Phase 4: T017 first → T018, T019, T020, T022 parallel → T021 (depends on T020) → T023 (depends on all) → T024
+Phase 2: T008, T009 parallel → T010 (depends on T009) → T011 → T031
+Phase 3: T012, T013 parallel → T014 (depends on T012, T013) → T015 (depends on T014) → T016 → T032
+Phase 4: T017 first → T018, T019, T020, T022 parallel → T021 (depends on T020) → T023 (depends on all) → T024 → T033/T034
 Phase 5: T025 → T026
-Phase 6: T027..T029 all parallel → T030
+Phase 6: T030 is complete; T027..T029 and T035..T036 remain verification tasks
 ```
 
 ---

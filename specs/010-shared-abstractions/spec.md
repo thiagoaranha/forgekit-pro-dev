@@ -45,7 +45,7 @@ A service developer needs to publish a domain event and consume it in another se
 **Acceptance Scenarios**:
 
 1. **Given** a service publishes an event using `@forgekit/shared-messaging`, **When** the event reaches the broker, **Then** the message headers contain the current correlation ID and traceparent without any manual injection by the service developer.
-2. **Given** a consumer receives a message that fails processing, **When** the retry policy is exhausted (default: 3 attempts with exponential backoff + jitter), **Then** the message is routed to a Dead Letter Queue and an error metric is incremented.
+2. **Given** a consumer receives a message that fails processing, **When** the retry policy is exhausted (default: 3 attempts with a fixed 1s retry delay), **Then** the message is routed to a Dead Letter Queue and an error metric is incremented.
 3. **Given** a broker connection is lost, **When** `@forgekit/shared-messaging` detects the disconnection, **Then** it reconnects automatically with bounded backoff and logs the reconnection lifecycle.
 
 ---
@@ -86,7 +86,7 @@ A service developer needs all error responses to follow the exact structure mand
 
 - What happens when a broker connection cannot be established on service startup?
 - What happens when a consumer's processing callback is synchronous vs. asynchronous?
-- How does the messaging library handle poison messages that cause deserialization failures before reaching business logic?
+- Poison messages are classified as non-retryable before business logic runs. This includes invalid JSON, unsupported content type when JSON enforcement is enabled, and payloads rejected by an optional consumer validator.
 - What happens when identity headers contain unexpected types (arrays, empty strings, non-string values)?
 - How does `shared-security` behave when the gateway injects additional identity claims in the future?
 - What happens when an `AppError` is thrown with a custom HTTP status not covered by the default classification mapping?
@@ -126,17 +126,27 @@ A service developer needs all error responses to follow the exact structure mand
 
 #### Retry & Dead Letter Queue
 
-- **FR-018**: The client MUST support configurable retry behavior with default values: maximum 3 attempts, exponential backoff (base 1s, multiplier 2×), and jitter. Retry count MUST be tracked using RabbitMQ's built-in `x-death` header rather than custom headers.
+- **FR-018**: The client MUST support configurable retry behavior with default values: maximum 3 attempts and a fixed 1s retry delay using a retry queue TTL. Retry count MUST be tracked using RabbitMQ's built-in `x-death` header rather than custom headers.
 - **FR-019**: When a message handler throws an error classified as retryable, the message MUST be nacked and requeued up to the configured retry limit. The current attempt count MUST be read from the `x-death` header's `count` field.
-- **FR-020**: When retry attempts are exhausted, the message MUST be routed to a Dead Letter Queue. The DLQ naming convention MUST follow `<original-queue>.dlq`.
+- **FR-020**: When retry attempts are exhausted, the library MUST publish the original message payload and headers to the Dead Letter Queue using a confirm channel, wait for broker confirmation, and only then acknowledge the original message. The DLQ naming convention MUST follow `<original-queue>.dlq`.
 - **FR-021**: The library MUST configure DLQ topology automatically when asserting queues, using RabbitMQ's `x-dead-letter-exchange` and `x-dead-letter-routing-key` arguments.
 - **FR-022**: Messages routed to DLQ MUST preserve their original headers, payload, and correlation context.
-- **FR-023**: Non-retryable errors (deserialization failures, schema validation errors) MUST bypass retry and route directly to the DLQ.
+- **FR-023**: Non-retryable errors (deserialization failures, schema validation errors) MUST bypass retry and be published directly to the DLQ using the same confirm-then-ack flow defined in FR-020.
+- **FR-023a**: The `subscribe` method MUST classify invalid JSON parse failures as `NonRetryableError` before invoking the handler.
+- **FR-023b**: The `subscribe` method MUST support optional payload validation before handler execution. If the validator rejects or throws, the message MUST be treated as `NonRetryableError` and routed directly to the DLQ.
+- **FR-023c**: The `subscribe` method SHOULD support an optional `requireJsonContentType` setting. When enabled, missing or non-`application/json` content types MUST be treated as `NonRetryableError`.
 
 #### Metrics
 
-- **FR-024**: The library MUST emit metrics for: messages published (`messaging_published_total`), messages consumed (`messaging_consumed_total`), consumer errors (`messaging_consumer_errors_total`), and messages sent to DLQ (`messaging_dlq_total`). All metrics MUST include `service`, `exchange`, and `queue` labels.
-- **FR-025**: The library MUST emit a latency histogram for message processing duration (`messaging_processing_duration_seconds`).
+- **FR-024**: The library MUST emit messaging metrics with stable, low-cardinality labels:
+  - `messaging_published_total`: `service`, `exchange`, `routing_key`
+  - `messaging_consumed_total`: `service`, `queue`, `outcome`
+  - `messaging_consumer_errors_total`: `service`, `queue`, `error_type`
+  - `messaging_dlq_total`: `service`, `queue`, `reason`
+  - `messaging_processing_duration_seconds`: `service`, `queue`, `outcome`
+- **FR-024a**: The `outcome` label MUST be one of `success` or `error`. The `error_type` label MUST be normalized to one of `handler_error`, `invalid_json`, `invalid_content_type`, `validation_failed`, or `unknown`. The `reason` label for DLQ metrics MUST be normalized to one of `retry_exhausted`, `non_retryable`, `invalid_json`, `invalid_content_type`, or `validation_failed`.
+- **FR-024b**: Messaging metric labels MUST NOT include correlation IDs, trace IDs, user IDs, raw error messages, payload fields, or any other unbounded dynamic values.
+- **FR-025**: The library MUST emit a latency histogram for message processing duration (`messaging_processing_duration_seconds`) using the labels defined in FR-024.
 
 ---
 
@@ -236,7 +246,7 @@ A service developer needs all error responses to follow the exact structure mand
 ### Measurable Outcomes
 
 - **SC-001**: A service developer can publish a domain event in ≤5 lines of code using `@forgekit/shared-messaging`, and the published message automatically contains correlation ID, traceparent, and persistence flag without any manual header injection.
-- **SC-002**: A service developer can start consuming a queue in ≤10 lines of code, and failed messages are automatically retried (3× exponential backoff) then routed to a DLQ without service-specific retry logic.
+- **SC-002**: A service developer can start consuming a queue in ≤10 lines of code, and failed messages are automatically retried 3 times with a fixed retry delay then routed to a DLQ without service-specific retry logic.
 - **SC-003**: A reviewer can inspect any service route that accesses user identity and confirm it uses the typed `IdentityContext` from `@forgekit/shared-security` instead of raw `request.headers['x-forgekit-user-id']` access.
 - **SC-004**: A reviewer can trigger any error type across any service and confirm that all error responses match the exact JSON structure `{ code, message, correlationId, traceId }` as required by Spec 003 FR-062.
 - **SC-005**: After adopting the three packages, the service template's messaging example (`example-messaging.ts`) is reduced by at least 60% in lines of code while maintaining identical observable behavior.
@@ -285,4 +295,8 @@ After all three are implemented, a follow-up task MUST update:
 | 1 | Include `permissions` in `IdentityContext`? | Deferred to follow-up | Current gateway only injects `user-id` and `role`. Adding `permissions` now would be speculative. |
 | 2 | Deprecation strategy for `observabilityErrorHandlerPlugin` | Deprecate with re-export shim | Keeps backward compatibility while guiding adoption of `shared-error-handling`. |
 | 3 | Retry count tracking mechanism | RabbitMQ built-in `x-death` header | Leverages native broker semantics, avoids custom header management, and preserves retry metadata across redeliveries. |
-| 4 | Implementation order | `error-handling` → `security` → `messaging` | Follows the dependency chain; each package builds on the previous. |
+| 4 | Final DLQ routing mechanism | Application-managed publish to `<queue>.dlq` with confirm-then-ack | RabbitMQ queue dead-letter arguments cannot choose retry vs final DLQ per failure case from the same consumer `nack`; explicit publish keeps the decision clear and avoids losing messages by acknowledging only after the DLQ publish is confirmed. |
+| 5 | Message retry delay strategy | Fixed retry queue TTL, default 1s and configurable per client | This keeps the first implementation simple and compatible with native RabbitMQ queues; exponential per-message backoff is deferred until the project needs multiple retry queues or delayed-message support. |
+| 6 | Poison message classification | Invalid JSON, optional validator failures, enabled content-type failures, and explicit `NonRetryableError` bypass retry | These failures are deterministic payload/contract problems, so retrying them wastes broker capacity and delays DLQ inspection. |
+| 7 | Messaging metric labels | Labels are metric-specific and low-cardinality rather than forcing `exchange` and `queue` onto every metric | Publishers know exchange/routing key, consumers know queue, and forcing unavailable dimensions would add complexity and cardinality without improving observability. |
+| 8 | Implementation order | `error-handling` → `security` → `messaging` | Follows the dependency chain; each package builds on the previous. |

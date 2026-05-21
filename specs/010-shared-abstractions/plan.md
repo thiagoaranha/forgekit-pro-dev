@@ -15,7 +15,7 @@ Implement three shared packages — `@forgekit/shared-error-handling`, `@forgeki
   - `@forgekit/shared-security`: `@forgekit/shared-error-handling` (workspace), `fastify` (peer), `fastify-plugin`
   - `@forgekit/shared-messaging`: `@forgekit/shared-observability` (workspace), `amqplib`, `prom-client`
 **Storage**: N/A (libraries, not services)
-**Testing**: Vitest with `@vitest/coverage-v8` (matching existing monorepo test setup)
+**Testing**: Vitest with `@vitest/coverage-v8` (matching the existing `packages/service-template` test setup)
 **Target Platform**: Node.js server-side (consumed by Fastify services)
 **Project Type**: Shared library packages in a pnpm monorepo
 **Performance Goals**: Sub-millisecond overhead for error/identity extraction. Messaging publish latency ≤ raw `amqplib` + 5ms tracing overhead.
@@ -103,7 +103,7 @@ packages/
 - When a message is dead-lettered (nacked without requeue, or TTL-expired), RabbitMQ adds/updates an `x-death` array header.
 - Each entry contains `{ queue, reason, count, exchange, routing-keys, time }`.
 - `count` is incremented on each dead-letter cycle to the same queue, making it a native retry counter.
-- Implementation: Set up a retry exchange/queue pair. On failure, nack → message goes to retry queue (with TTL for backoff) → re-routes to original queue → `x-death[0].count` increments.
+- Implementation: Set up a retry exchange/queue pair. On failure, nack → message goes to retry queue with a fixed configurable TTL, then re-routes to the original queue and increments `x-death[0].count`.
 
 ### Fastify Plugin Registration Order
 
@@ -125,6 +125,14 @@ The new `errorHandlerPlugin` will:
 4. Maintain the same response shape for backward compatibility
 
 ## Phase 1: Design
+
+### Testing Strategy
+
+- Each new shared package MUST include `vitest.config.ts`, `test` and `test:watch` scripts, and coverage thresholds matching `packages/service-template`: 80% lines/statements/functions and 70% branches.
+- `@forgekit/shared-error-handling` and `@forgekit/shared-security` require unit tests for their public APIs and Fastify plugins/guards.
+- `@forgekit/shared-messaging` requires unit tests for retry parsing, poison message classification, metrics labels, and publish options.
+- `@forgekit/shared-messaging` also requires RabbitMQ integration tests for publish/consume propagation, fixed-delay retry, DLQ confirm-then-ack, poison message DLQ routing, and readiness checks.
+- Root verification MUST include `pnpm test` in addition to `pnpm build` and `pnpm lint`.
 
 ### Package 1 — `@forgekit/shared-error-handling`
 
@@ -215,7 +223,13 @@ type MessagingClientOptions = {
   url: string;
   serviceName: string;
   reconnect?: { maxAttempts?: number; baseDelayMs?: number; maxDelayMs?: number };
-  retry?: { maxAttempts?: number; baseDelayMs?: number };
+  retry?: { maxAttempts?: number; delayMs?: number };
+};
+type SubscribeOptions<T = unknown> = {
+  prefetch?: number;
+  noAck?: boolean;
+  requireJsonContentType?: boolean;
+  validate?: (payload: unknown) => T | Promise<T>;
 };
 type MessageHandler<T> = (payload: T, metadata: MessageMetadata) => Promise<void> | void;
 type MessageMetadata = { correlationId: string; traceparent: string; retryCount: number; headers: Record<string, unknown> };
@@ -247,12 +261,12 @@ export { errorHandlerPlugin as observabilityErrorHandlerPlugin } from '@forgekit
 
 ### Execution Order (strict — each phase depends on the previous)
 
-1. **Phase 1: Setup** — Create all three package skeletons with `package.json`, `tsconfig.json`, empty `src/index.ts`.
+1. **Phase 1: Setup** — Create all three package skeletons with `package.json`, `tsconfig.json`, `vitest.config.ts`, and empty `src/index.ts`.
 2. **Phase 2: `shared-error-handling`** — Implement `AppError`, factory functions, `ErrorResponse`, `toErrorResponse`, and the Fastify plugin.
 3. **Phase 3: `shared-security`** — Implement `IdentityContext`, extraction functions, Fastify plugin, and guards.
 4. **Phase 4: `shared-messaging`** — Implement connection manager, publisher, consumer, retry/DLQ policy, and metrics.
 5. **Phase 5: Deprecation shim** — Update `shared-observability` to re-export the deprecated error handler.
-6. **Phase 6: Polish** — Documentation, lint, build verification, template update planning.
+6. **Phase 6: Polish** — Documentation, lint, build, test verification, and template update planning.
 
 ### Constraints
 
