@@ -11,6 +11,7 @@
     "db:generate": "prisma generate"
   },
   "dependencies": {
+    "@forgekit/shared-error-handling": "workspace:*",
     "@forgekit/shared-observability": "workspace:*",
     "@forgekit/shared-tooling": "workspace:*",
     "@prisma/client": "^5.12.1",

@@ -63,6 +63,9 @@ importers:
 
   apps/services/example-service:
     dependencies:
+      '@forgekit/shared-error-handling':
+        specifier: workspace:*
+        version: link:../../../packages/shared-error-handling
       '@forgekit/shared-observability':
         specifier: workspace:*
         version: link:../../../packages/shared-observability
@@ -129,9 +132,6 @@ importers:
 
   packages/shared-observability:
     dependencies:
-      '@forgekit/shared-error-handling':
-        specifier: workspace:*
-        version: link:../shared-error-handling
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1

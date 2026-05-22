@@ -11,9 +11,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "fastify": "^4.26.2",
+    "@forgekit/shared-error-handling": "workspace:*",
     "@forgekit/shared-observability": "workspace:*",
-    "@forgekit/shared-tooling": "workspace:*"
+    "@forgekit/shared-tooling": "workspace:*",
+    "fastify": "^4.26.2"
   },
   "devDependencies": {
     "typescript": "^5.4.5",
