@@ -168,6 +168,8 @@ function toErrorResponse(error: unknown): { statusCode: number; body: ErrorRespo
 
 // Fastify plugin
 const errorHandlerPlugin: FastifyPluginAsync;
+// The plugin annotates the active span (via trace.getActiveSpan() from @opentelemetry/api)
+// with span.recordException() + SpanStatusCode.ERROR when handling errors.
 ```
 
 ### Package 2 — `@forgekit/shared-security`
@@ -195,6 +197,7 @@ const identityPlugin: FastifyPluginAsync;
 
 // Guards
 function requireIdentity(request: FastifyRequest, reply: FastifyReply): Promise<void>;
+// requireRole implies requireIdentity: returns 401 if userId absent, 403 if role not allowed.
 function requireRole(...roles: string[]): (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 ```
 

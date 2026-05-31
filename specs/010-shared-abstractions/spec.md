@@ -169,7 +169,7 @@ A service developer needs all error responses to follow the exact structure mand
 #### Authorization Guards
 
 - **FR-034**: The library MUST export a `requireIdentity` guard function (Fastify preHandler) that returns HTTP 401 if `userId` is absent from the request identity.
-- **FR-035**: The library MUST export a `requireRole` factory function that accepts one or more allowed roles and returns a preHandler that responds HTTP 403 if the request identity's role is not in the allowed list.
+- **FR-035**: The library MUST export a `requireRole` factory function that accepts one or more allowed roles and returns a preHandler that first checks for authentication — responding HTTP 401 via `unauthorizedError()` if `userId` is absent — and then responds HTTP 403 via `forbiddenError()` if the request identity's role is not in the allowed list. This means `requireRole` implies `requireIdentity`; services do not need to register both guards on the same route.
 - **FR-036**: Guard functions MUST use `@forgekit/shared-error-handling` error codes in their rejection responses to maintain response consistency.
 
 #### Identity Propagation
@@ -212,7 +212,7 @@ A service developer needs all error responses to follow the exact structure mand
 
 - **FR-044**: The library MUST export a Fastify error-handler plugin (`errorHandlerPlugin`) that catches all errors and replies with the standardized `ErrorResponse`.
 - **FR-045**: The plugin MUST log all errors using `@forgekit/shared-observability` logger with appropriate log levels: `warn` for operational errors (4xx), `error` for unexpected errors (5xx).
-- **FR-046**: The plugin MUST create or annotate the active tracing span with error metadata.
+- **FR-046**: The plugin MUST annotate the active tracing span with error metadata by calling `trace.getActiveSpan()` from `@opentelemetry/api` (already a transitive dependency via `@forgekit/shared-observability`), recording the exception with `span.recordException(error)` and setting the span status to `SpanStatusCode.ERROR`. If no active span exists, the annotation step MUST be skipped silently.
 - **FR-047**: The plugin MUST include `details` in the response body only for operational errors. Unexpected internal errors MUST NOT expose details.
 
 #### Migration Path
@@ -300,3 +300,5 @@ After all three are implemented, a follow-up task MUST update:
 | 6 | Poison message classification | Invalid JSON, optional validator failures, enabled content-type failures, and explicit `NonRetryableError` bypass retry | These failures are deterministic payload/contract problems, so retrying them wastes broker capacity and delays DLQ inspection. |
 | 7 | Messaging metric labels | Labels are metric-specific and low-cardinality rather than forcing `exchange` and `queue` onto every metric | Publishers know exchange/routing key, consumers know queue, and forcing unavailable dimensions would add complexity and cardinality without improving observability. |
 | 8 | Implementation order | `error-handling` → `security` → `messaging` | Follows the dependency chain; each package builds on the previous. |
+| 9 | `requireRole` behavior when user is unauthenticated | Return 401 (not 403) | A missing `userId` is an authentication failure, not an authorization failure. `requireRole` implies `requireIdentity` so that services do not need to stack both guards on every protected route. |
+| 10 | Span annotation API for `errorHandlerPlugin` | Use `@opentelemetry/api` directly (`trace.getActiveSpan()`) | `@opentelemetry/api` is already a transitive dependency via `shared-observability`. Using it directly avoids adding a new export to the observability package just for one call site. |

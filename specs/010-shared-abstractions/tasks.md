@@ -48,7 +48,7 @@
   - Fastify plugin using `fastify-plugin` that calls `setErrorHandler`.
   - Uses `toErrorResponse` to build the response body.
   - Logs with `logger.warn` for operational errors (4xx), `logger.error` for unexpected errors (5xx).
-  - Annotates the active tracing span with error metadata using `getTraceId`.
+  - Annotates the active tracing span with error metadata by calling `trace.getActiveSpan()` from `@opentelemetry/api`, recording the exception with `span.recordException(error)` and setting span status to `SpanStatusCode.ERROR`. Skips silently if no active span exists.
   - Includes `details` only for operational errors in the response.
   - (FR-044, FR-045, FR-046, FR-047)
 
@@ -95,7 +95,7 @@
 
 - [ ] **T015** [US2] Create `packages/shared-security/src/guards.ts`:
   - `requireIdentity` — Fastify preHandler. Returns 401 via `unauthorizedError()` from `@forgekit/shared-error-handling` if `request.identity.userId` is absent.
-  - `requireRole(...roles)` — Factory returning a Fastify preHandler. Returns 403 via `forbiddenError()` if `request.identity.role` is not in the allowed list.
+  - `requireRole(...roles)` — Factory returning a Fastify preHandler. First checks authentication: returns 401 via `unauthorizedError()` if `request.identity.userId` is absent. Then checks authorization: returns 403 via `forbiddenError()` if `request.identity.role` is not in the allowed list. This means `requireRole` implies `requireIdentity`.
   - (FR-034, FR-035, FR-036)
 
 - [ ] **T016** [US2] Create `packages/shared-security/src/index.ts`:
@@ -123,7 +123,7 @@
 ### Implementation
 
 - [ ] **T017** [US1] Create `packages/shared-messaging/src/types.ts`:
-  - `MessagingClientOptions` — `url`, `serviceName`, optional `reconnect` (maxAttempts, baseDelayMs, maxDelayMs) and `retry` (maxAttempts, delayMs) configs. Message retry delay is fixed per client, defaulting to 1s.
+  - `MessagingClientOptions` — `url`, `serviceName`, optional `reconnect` (maxAttempts, baseDelayMs, maxDelayMs) and `retry` (maxAttempts, delayMs) configs. Message retry delay is fixed per client, defaulting to 1s. The field MUST be named `delayMs` (not `baseDelayMs`) to reflect the fixed-delay strategy.
   - `PublishOptions` — optional overrides for exchange type, persistent flag, custom headers.
   - `SubscribeOptions` — optional prefetch count, noAck flag, `requireJsonContentType`, and `validate(payload)` callback. Validation failures are treated as `NonRetryableError`.
   - `AssertQueueOptions` — optional durable, exclusive, DLQ configuration overrides.
