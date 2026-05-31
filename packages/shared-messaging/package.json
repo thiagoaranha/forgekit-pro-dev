@@ -5,7 +5,9 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",
-    "lint": "eslint \"src/**/*.ts\""
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@forgekit/shared-observability": "workspace:*",
@@ -15,6 +17,8 @@
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.5",
-    "typescript": "^5.4.5"
+    "@vitest/coverage-v8": "^1.5.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.5.0"
   }
 }

@@ -30,7 +30,7 @@ export const assertQueueWithDlq = async (
   channel: Channel,
   queueName: string,
   options: Options.AssertQueue = {},
-  retryBaseDelayMs = 1000
+  retryDelayMs = 1000
 ): Promise<void> => {
   const retryExchange = `${queueName}.retry.exchange`;
   const retryQueue = `${queueName}.retry`;
@@ -43,7 +43,7 @@ export const assertQueueWithDlq = async (
     durable: true,
     deadLetterExchange: '',
     deadLetterRoutingKey: queueName,
-    messageTtl: retryBaseDelayMs,
+    messageTtl: retryDelayMs,
   });
   await channel.bindQueue(retryQueue, retryExchange, queueName);
 

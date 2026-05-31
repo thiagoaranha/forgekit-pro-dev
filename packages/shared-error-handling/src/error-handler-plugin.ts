@@ -1,14 +1,31 @@
-import { getTraceId, logger } from '@forgekit/shared-observability';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
+import { logger } from '@forgekit/shared-observability';
 import type { FastifyError, FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 
 import { AppError } from './app-error';
 import { toErrorResponse } from './error-response';
 
+const annotateSpanWithError = (error: unknown): void => {
+  const span = trace.getActiveSpan();
+
+  if (!span) {
+    return;
+  }
+
+  span.recordException(error instanceof Error ? error : new Error(String(error)));
+  span.setStatus({
+    code: SpanStatusCode.ERROR,
+    message: error instanceof Error ? error.message : String(error),
+  });
+};
+
 export const errorHandlerPlugin = fp(
   async (fastify: FastifyInstance): Promise<void> => {
     fastify.setErrorHandler((error: FastifyError, request, reply) => {
       const result = toErrorResponse(error);
+
+      annotateSpanWithError(error);
 
       const logPayload = {
         err: error,
@@ -16,7 +33,6 @@ export const errorHandlerPlugin = fp(
         statusCode: result.statusCode,
         method: request.method,
         route: request.routeOptions.url,
-        traceId: getTraceId(),
       };
 
       if (result.isOperational) {

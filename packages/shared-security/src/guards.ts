@@ -10,7 +10,11 @@ export const requireIdentity = async (request: FastifyRequest, _reply: FastifyRe
 export const requireRole =
   (...allowedRoles: string[]) =>
   async (request: FastifyRequest, _reply: FastifyReply): Promise<void> => {
-    if (!request.identity?.role || !allowedRoles.includes(request.identity.role)) {
+    if (!request.identity?.userId) {
+      throw unauthorizedError();
+    }
+
+    if (!request.identity.role || !allowedRoles.includes(request.identity.role)) {
       throw forbiddenError();
     }
   };

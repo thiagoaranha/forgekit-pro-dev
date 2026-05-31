@@ -12,7 +12,7 @@ export type MessagingClientOptions = {
   };
   retry?: {
     maxAttempts?: number;
-    baseDelayMs?: number;
+    delayMs?: number;
   };
 };
 
@@ -21,9 +21,11 @@ export type PublishOptions = {
   headers?: Record<string, unknown>;
 };
 
-export type SubscribeOptions = {
+export type SubscribeOptions<T = unknown> = {
   prefetch?: number;
   noAck?: boolean;
+  requireJsonContentType?: boolean;
+  validate?: (payload: unknown) => T | Promise<T>;
 };
 
 export type AssertQueueOptions = Options.AssertQueue & {
@@ -48,6 +50,6 @@ export interface MessagingClient {
   assertQueue(name: string, options?: AssertQueueOptions): Promise<void>;
   bindQueue(queue: string, exchange: string, routingKey: string): Promise<void>;
   publish<T>(exchange: string, routingKey: string, payload: T, options?: PublishOptions): Promise<void>;
-  subscribe<T>(queue: string, handler: MessageHandler<T>, options?: SubscribeOptions): Promise<void>;
+  subscribe<T>(queue: string, handler: MessageHandler<T>, options?: SubscribeOptions<T>): Promise<void>;
   healthCheck(): ReadinessCheck;
 }

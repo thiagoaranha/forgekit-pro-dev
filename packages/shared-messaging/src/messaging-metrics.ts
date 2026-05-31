@@ -36,22 +36,49 @@ export const messagingPublishedTotal = getOrCreateCounter(
   'Total published messages.',
   ['service', 'exchange', 'routing_key']
 );
+
 export const messagingConsumedTotal = getOrCreateCounter(
   'messaging_consumed_total',
   'Total consumed messages.',
   ['service', 'queue', 'outcome']
 );
+
 export const messagingConsumerErrorsTotal = getOrCreateCounter(
   'messaging_consumer_errors_total',
   'Total consumer errors.',
-  ['service', 'queue']
+  ['service', 'queue', 'error_type']
 );
-export const messagingDlqTotal = getOrCreateCounter('messaging_dlq_total', 'Total messages sent to DLQ.', [
-  'service',
-  'queue',
-]);
+
+export const messagingDlqTotal = getOrCreateCounter(
+  'messaging_dlq_total',
+  'Total messages sent to DLQ.',
+  ['service', 'queue', 'reason']
+);
+
 export const messagingProcessingDurationSeconds = getOrCreateHistogram(
   'messaging_processing_duration_seconds',
   'Message processing duration in seconds.',
   ['service', 'queue', 'outcome']
 );
+
+/**
+ * Normalized error type for consumer error metrics.
+ * Must be one of the allowed low-cardinality values per FR-024a.
+ */
+export type ConsumerErrorType =
+  | 'handler_error'
+  | 'invalid_json'
+  | 'invalid_content_type'
+  | 'validation_failed'
+  | 'unknown';
+
+/**
+ * Normalized DLQ reason for DLQ metrics.
+ * Must be one of the allowed low-cardinality values per FR-024a.
+ */
+export type DlqReason =
+  | 'retry_exhausted'
+  | 'non_retryable'
+  | 'invalid_json'
+  | 'invalid_content_type'
+  | 'validation_failed';

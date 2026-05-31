@@ -36,7 +36,7 @@ class MessagingClientImpl implements MessagingClient {
 
   async assertQueue(name: string, options: AssertQueueOptions = {}): Promise<void> {
     const channel = await this.connectionManager.getChannel();
-    await assertQueueWithDlq(channel, name, options, this.options.retry?.baseDelayMs ?? 1000);
+    await assertQueueWithDlq(channel, name, options, this.options.retry?.delayMs ?? 1000);
   }
 
   async bindQueue(queue: string, exchange: string, routingKey: string): Promise<void> {
@@ -50,7 +50,7 @@ class MessagingClientImpl implements MessagingClient {
     messagingPublishedTotal.labels(this.options.serviceName, exchange, routingKey).inc();
   }
 
-  async subscribe<T>(queue: string, handler: MessageHandler<T>, options: SubscribeOptions = {}): Promise<void> {
+  async subscribe<T>(queue: string, handler: MessageHandler<T>, options: SubscribeOptions<T> = {}): Promise<void> {
     const channel = await this.connectionManager.getChannel();
     await subscribeQueue(channel, queue, handler, options, this.options);
   }
