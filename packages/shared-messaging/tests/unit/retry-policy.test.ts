@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { NonRetryableError, parseRetryCount, isRetryExhausted } from '../../src/retry-policy';
+import { NonRetryableError, parseRetryCount, isRetryExhausted } from '../../src/retry-policy.js';
 import type { ConsumeMessage } from 'amqplib';
 import amqplib from 'amqplib';
 

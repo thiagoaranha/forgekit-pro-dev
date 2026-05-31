@@ -252,6 +252,14 @@ model Example {
             fs.writeFileSync(dockerfilePath, dockerfileContent, 'utf8');
         }
     }
+
+    // 5. Adjust tsconfig path
+    const tsconfigPath = path.join(targetDir, 'tsconfig.json');
+    if (fs.existsSync(tsconfigPath)) {
+        let tsconfigContent = fs.readFileSync(tsconfigPath, 'utf8');
+        tsconfigContent = tsconfigContent.replace('../../tsconfig.base.json', '../../../tsconfig.base.json');
+        fs.writeFileSync(tsconfigPath, tsconfigContent, 'utf8');
+    }
 }
 
 // ─── Docker Compose Injection ─────────────────────────────────────────────────

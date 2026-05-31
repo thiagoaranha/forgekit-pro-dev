@@ -27,7 +27,7 @@ RUN pnpm install --prod=false
 COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY apps/gateway ./apps/gateway/
-RUN pnpm --filter gateway build
+RUN pnpm --filter gateway... build
 
 FROM base AS runner
 ENV NODE_ENV=production

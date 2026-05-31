@@ -1,5 +1,5 @@
-import type { IdentityContext } from './identity-context';
-import { X_FORGEKIT_ROLE, X_FORGEKIT_USER_ID } from './identity-context';
+import type { IdentityContext } from './identity-context.js';
+import { X_FORGEKIT_ROLE, X_FORGEKIT_USER_ID } from './identity-context.js';
 
 const normalizeString = (value: unknown): string | undefined => {
   if (typeof value === 'string') {

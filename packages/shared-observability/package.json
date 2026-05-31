@@ -2,13 +2,12 @@
   "name": "@forgekit/shared-observability",
   "version": "1.0.0",
   "private": true,
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "lint": "eslint \"src/**/*.ts\""
   },
   "dependencies": {
-    "@forgekit/shared-error-handling": "workspace:*",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/core": "^2.7.1",
     "@opentelemetry/sdk-trace-base": "^2.7.1",

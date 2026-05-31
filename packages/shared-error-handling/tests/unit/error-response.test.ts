@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { AppError, validationError, internalError } from '../../src/app-error';
-import { toErrorResponse } from '../../src/error-response';
+import { AppError, validationError, internalError } from '../../src/app-error.js';
+import { toErrorResponse } from '../../src/error-response.js';
 
 vi.mock('@forgekit/shared-observability', () => ({
   getCorrelationId: () => 'test-correlation-id',

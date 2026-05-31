@@ -7,8 +7,8 @@ export {
   notFoundError,
   unauthorizedError,
   validationError,
-} from './app-error';
-export type { AppErrorOptions } from './app-error';
-export { errorHandlerPlugin, isAppError } from './error-handler-plugin';
-export type { ErrorResponse, ErrorResult } from './error-response';
-export { toErrorResponse } from './error-response';
+} from './app-error.js';
+export type { AppErrorOptions } from './app-error.js';
+export { errorHandlerPlugin, isAppError } from './error-handler-plugin.js';
+export type { ErrorResponse, ErrorResult } from './error-response.js';
+export { toErrorResponse } from './error-response.js';

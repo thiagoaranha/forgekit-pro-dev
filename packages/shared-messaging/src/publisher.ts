@@ -6,7 +6,7 @@ import {
 } from '@forgekit/shared-observability';
 import type { ConfirmChannel } from 'amqplib';
 
-import type { PublishOptions } from './types';
+import type { PublishOptions } from './types.js';
 
 export const publishMessage = async <T>(
   channel: ConfirmChannel,

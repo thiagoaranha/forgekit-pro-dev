@@ -1,5 +1,5 @@
-export { createMessagingClient } from './messaging-client';
-export { NonRetryableError } from './retry-policy';
+export { createMessagingClient } from './messaging-client.js';
+export { NonRetryableError } from './retry-policy.js';
 export type {
   AssertQueueOptions,
   MessageHandler,
@@ -8,4 +8,4 @@ export type {
   MessagingClientOptions,
   PublishOptions,
   SubscribeOptions,
-} from './types';
+} from './types.js';

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 
-import { identityPlugin } from '../../src/identity-plugin';
-import { requireIdentity, requireRole } from '../../src/guards';
+import { identityPlugin } from '../../src/identity-plugin.js';
+import { requireIdentity, requireRole } from '../../src/guards.js';
 
 vi.mock('@forgekit/shared-error-handling', () => ({
   unauthorizedError: (message = 'Unauthorized') => {

@@ -7,7 +7,7 @@ import {
   messagingConsumerErrorsTotal,
   messagingDlqTotal,
   messagingProcessingDurationSeconds,
-} from '../../src/messaging-metrics';
+} from '../../src/messaging-metrics.js';
 
 describe('Messaging Metrics', () => {
   beforeEach(() => {

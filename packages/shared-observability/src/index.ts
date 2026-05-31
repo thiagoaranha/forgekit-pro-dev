@@ -669,8 +669,4 @@ export const healthPlugin = fp(
     { name: 'forgekit-health' }
 );
 
-/**
- * @deprecated Use `errorHandlerPlugin` from `@forgekit/shared-error-handling` instead.
- * This re-export will be removed in a future major version.
- */
-export { errorHandlerPlugin as observabilityErrorHandlerPlugin } from '@forgekit/shared-error-handling';
+

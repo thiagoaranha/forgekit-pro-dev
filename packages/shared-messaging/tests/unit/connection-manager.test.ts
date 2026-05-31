@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import amqp from 'amqplib';
 
-import { ConnectionManager } from '../../src/connection-manager';
+import { ConnectionManager } from '../../src/connection-manager.js';
 
 vi.mock('amqplib', () => {
   return {

@@ -1,6 +1,6 @@
 import { getCorrelationId, getTraceId } from '@forgekit/shared-observability';
 
-import { AppError } from './app-error';
+import { AppError } from './app-error.js';
 
 export type ErrorResponse = {
   code: string;

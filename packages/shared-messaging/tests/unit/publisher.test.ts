@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { ConfirmChannel } from 'amqplib';
 
-import { publishMessage } from '../../src/publisher';
+import { publishMessage } from '../../src/publisher.js';
 
 vi.mock('@forgekit/shared-observability', () => ({
   logger: { warn: vi.fn() },

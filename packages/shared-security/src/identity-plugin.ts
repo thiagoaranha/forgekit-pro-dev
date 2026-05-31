@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 
-import { extractIdentityFromHeaders } from './identity-extraction';
+import { extractIdentityFromHeaders } from './identity-extraction.js';
 
 declare module 'fastify' {
   interface FastifyRequest {

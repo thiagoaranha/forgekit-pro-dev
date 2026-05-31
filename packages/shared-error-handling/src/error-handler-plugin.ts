@@ -3,8 +3,8 @@ import { logger } from '@forgekit/shared-observability';
 import type { FastifyError, FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 
-import { AppError } from './app-error';
-import { toErrorResponse } from './error-response';
+import { AppError } from './app-error.js';
+import { toErrorResponse } from './error-response.js';
 
 const annotateSpanWithError = (error: unknown): void => {
   const span = trace.getActiveSpan();

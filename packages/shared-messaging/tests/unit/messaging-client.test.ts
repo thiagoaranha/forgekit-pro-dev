@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ConfirmChannel } from 'amqplib';
 
-import { createMessagingClient } from '../../src/messaging-client';
-import { ConnectionManager } from '../../src/connection-manager';
-import type { MessagingClient } from '../../src/types';
+import { createMessagingClient } from '../../src/messaging-client.js';
+import { ConnectionManager } from '../../src/connection-manager.js';
+import type { MessagingClient } from '../../src/types.js';
 
 vi.mock('../../src/connection-manager', () => {
   return {

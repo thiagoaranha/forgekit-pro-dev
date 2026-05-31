@@ -7,15 +7,15 @@ import {
 import { extractIdentityFromMessageHeaders } from '@forgekit/shared-security';
 import type { ConsumeMessage, ConfirmChannel } from 'amqplib';
 
-import type { ConsumerErrorType, DlqReason } from './messaging-metrics';
+import type { ConsumerErrorType, DlqReason } from './messaging-metrics.js';
 import {
   messagingConsumedTotal,
   messagingConsumerErrorsTotal,
   messagingDlqTotal,
   messagingProcessingDurationSeconds,
-} from './messaging-metrics';
-import { NonRetryableError, isRetryExhausted, parseRetryCount } from './retry-policy';
-import type { MessageHandler, MessagingClientOptions, SubscribeOptions } from './types';
+} from './messaging-metrics.js';
+import { NonRetryableError, isRetryExhausted, parseRetryCount } from './retry-policy.js';
+import type { MessageHandler, MessagingClientOptions, SubscribeOptions } from './types.js';
 
 /**
  * Classifies an error into a normalized error type for metrics.

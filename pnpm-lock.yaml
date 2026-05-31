@@ -147,9 +147,6 @@ importers:
 
   packages/shared-observability:
     dependencies:
-      '@forgekit/shared-error-handling':
-        specifier: workspace:*
-        version: link:../shared-error-handling
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1

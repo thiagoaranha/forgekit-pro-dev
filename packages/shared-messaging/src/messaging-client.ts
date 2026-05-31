@@ -1,10 +1,10 @@
 import type { ReadinessCheck } from '@forgekit/shared-observability';
 
-import { ConnectionManager } from './connection-manager';
-import { messagingPublishedTotal } from './messaging-metrics';
-import { publishMessage } from './publisher';
-import { assertQueueWithDlq } from './retry-policy';
-import { subscribeQueue } from './consumer';
+import { ConnectionManager } from './connection-manager.js';
+import { messagingPublishedTotal } from './messaging-metrics.js';
+import { publishMessage } from './publisher.js';
+import { assertQueueWithDlq } from './retry-policy.js';
+import { subscribeQueue } from './consumer.js';
 import type {
   AssertQueueOptions,
   MessageHandler,
@@ -12,7 +12,7 @@ import type {
   MessagingClientOptions,
   PublishOptions,
   SubscribeOptions,
-} from './types';
+} from './types.js';
 
 class MessagingClientImpl implements MessagingClient {
   private readonly connectionManager: ConnectionManager;

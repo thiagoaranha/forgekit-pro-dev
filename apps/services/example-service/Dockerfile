@@ -29,7 +29,7 @@ COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY apps/services/example-service ./apps/services/example-service/
 RUN pnpm --filter example-service run db:generate
-RUN pnpm --filter example-service build
+RUN pnpm --filter example-service... build
 
 FROM base AS runner
 ENV NODE_ENV=production

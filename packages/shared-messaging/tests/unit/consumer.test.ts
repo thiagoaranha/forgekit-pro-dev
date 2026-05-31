@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ConfirmChannel, ConsumeMessage } from 'amqplib';
 
-import { subscribeQueue } from '../../src/consumer';
-import { NonRetryableError } from '../../src/retry-policy';
+import { subscribeQueue } from '../../src/consumer.js';
+import { NonRetryableError } from '../../src/retry-policy.js';
 
 vi.mock('@forgekit/shared-observability', () => ({
   extractObservabilityContextFromHeaders: () => ({ correlationId: '123', traceparent: '456' }),

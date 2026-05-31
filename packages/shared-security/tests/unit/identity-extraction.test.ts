@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { extractIdentityFromHeaders, extractIdentityFromMessageHeaders, injectIdentityHeaders } from '../../src/identity-extraction';
+import { extractIdentityFromHeaders, extractIdentityFromMessageHeaders, injectIdentityHeaders } from '../../src/identity-extraction.js';
 
 describe('extractIdentityFromHeaders', () => {
   it('should extract userId and role from valid headers', () => {

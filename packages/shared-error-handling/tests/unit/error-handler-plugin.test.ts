@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 
-import { errorHandlerPlugin } from '../../src/error-handler-plugin';
-import { validationError, notFoundError, internalError } from '../../src/app-error';
+import { errorHandlerPlugin } from '../../src/error-handler-plugin.js';
+import { validationError, notFoundError, internalError } from '../../src/app-error.js';
 
 vi.mock('@forgekit/shared-observability', () => ({
   getCorrelationId: () => 'test-correlation-id',

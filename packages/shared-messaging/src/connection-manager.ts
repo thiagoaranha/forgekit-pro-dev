@@ -1,7 +1,7 @@
 import { logger } from '@forgekit/shared-observability';
 import amqp, { type ChannelModel, type ConfirmChannel } from 'amqplib';
 
-import type { MessagingClientOptions } from './types';
+import type { MessagingClientOptions } from './types.js';
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 

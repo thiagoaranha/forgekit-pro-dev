@@ -9,7 +9,7 @@ import {
   conflictError,
   dependencyError,
   internalError,
-} from '../../src/app-error';
+} from '../../src/app-error.js';
 
 describe('AppError', () => {
   it('should create an error with all properties', () => {
