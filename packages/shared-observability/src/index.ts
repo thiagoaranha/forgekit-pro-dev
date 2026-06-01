@@ -71,8 +71,6 @@ export type TelemetryMetadata = {
     attributes?: Record<string, string | number | boolean | undefined>;
 };
 
-export type ErrorClassification = 'validation' | 'auth' | 'dependency' | 'unexpected';
-
 const contextStorage = new AsyncLocalStorage<ObservabilityContext>();
 const requestSpanStorage = new WeakMap<FastifyRequest, Span>();
 const requestOtelContextStorage = new WeakMap<FastifyRequest, Context>();
@@ -671,45 +669,4 @@ export const healthPlugin = fp(
     { name: 'forgekit-health' }
 );
 
-const classifyError = (statusCode: number): ErrorClassification => {
-    if (statusCode === 401 || statusCode === 403) {
-        return 'auth';
-    }
 
-    if (statusCode >= 500) {
-        return 'unexpected';
-    }
-
-    return 'validation';
-};
-
-export const observabilityErrorHandlerPlugin = fp(
-    async (fastify: FastifyInstance): Promise<void> => {
-        fastify.setErrorHandler((error, request, reply) => {
-            const statusCode = typeof error.statusCode === 'number' && error.statusCode >= 400 ? error.statusCode : 500;
-            const classification = classifyError(statusCode);
-            const correlationId = getCorrelationId();
-            const traceId = getTraceId();
-            const message = statusCode >= 500 ? 'Unexpected internal error' : error.message;
-
-            logger.error(
-                {
-                    err: error,
-                    statusCode,
-                    classification,
-                    method: request.method,
-                    route: routeLabel(request),
-                },
-                'Request failed'
-            );
-
-            reply.status(statusCode).send({
-                code: classification === 'unexpected' ? 'INTERNAL_ERROR' : classification.toUpperCase(),
-                message,
-                correlationId,
-                traceId,
-            });
-        });
-    },
-    { name: 'forgekit-observability-error-handler' }
-);

@@ -1,9 +1,9 @@
 import Fastify from 'fastify';
+import { errorHandlerPlugin } from '@forgekit/shared-error-handling';
 import {
     healthPlugin,
     initializeTracing,
     logger,
-    observabilityErrorHandlerPlugin,
     observabilityPlugin,
 } from '@forgekit/shared-observability';
 import { PrismaClient } from '@prisma/client';
@@ -17,7 +17,7 @@ const buildService = async () => {
     const server = Fastify({ logger: false });
 
     server.register(observabilityPlugin, { serviceName: SERVICE_NAME });
-    server.register(observabilityErrorHandlerPlugin);
+    server.register(errorHandlerPlugin);
     server.register(healthPlugin, {
         serviceName: SERVICE_NAME,
         readinessChecks: [

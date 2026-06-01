@@ -6,17 +6,24 @@ RUN corepack enable
 
 FROM base AS builder
 # Copy workspace config and package.json files
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY apps/services/{{SERVICE_NAME}}/package.json ./apps/services/{{SERVICE_NAME}}/
-COPY packages/shared-observability/package.json ./packages/shared-observability/
-COPY packages/shared-tooling/package.json ./packages/shared-tooling/
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc ./
+RUN --mount=type=bind,source=.,target=/src \
+    find /src -name "package.json" \
+        -not -path "*/node_modules/*" \
+        -not -path "*/dist/*" \
+        -not -path "/src/package.json" \
+    | while read -r file; do \
+        rel="${file#/src/}"; \
+        mkdir -p "/app/$(dirname "$rel")"; \
+        cp "$file" "/app/$rel"; \
+    done
 RUN pnpm install --prod=false
 
 # Copy source and build
 COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY apps/services/{{SERVICE_NAME}} ./apps/services/{{SERVICE_NAME}}/
-RUN pnpm --filter {{SERVICE_NAME}} build
+RUN pnpm --filter {{SERVICE_NAME}}... build
 
 FROM base AS runner
 ENV NODE_ENV=production
