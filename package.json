@@ -1,0 +1,33 @@
+{
+  "name": "forgekit-root",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "boot": "node ./scripts/bootstrap/start.js",
+    "down": "node ./scripts/bootstrap/down.js",
+    "scaffold": "node ./scripts/scaffold/index.js",
+    "service:doctor": "node ./scripts/doctor/index.js",
+    "validate-spec": "node ./scripts/validate-spec.js",
+    "db:push": "pnpm -r run db:push",
+    "db:generate": "pnpm -r run db:generate",
+    "dev": "pnpm -r run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json,yaml,yml}\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.2",
+    "@eslint/js": "^9.0.0",
+    "typescript": "^5.4.5",
+    "prettier": "^3.2.5",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0"
+  },
+  "packageManager": "pnpm@11.2.2+sha512.36e6621fad506178936455e70247b8808ef4ec25797a9f437a93281a020484e2607f6a469a22e982987c3dbb8866e3071514ab10a4a1749e06edcd1ec118436f"
+}
