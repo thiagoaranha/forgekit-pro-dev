@@ -15,6 +15,7 @@ declare module 'fastify' {
 
 export const identityPlugin = fp(
   async (fastify: FastifyInstance): Promise<void> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     fastify.decorateRequest('identity', null as any);
     fastify.addHook('onRequest', (request, _reply, done) => {
       request.identity = extractIdentityFromHeaders(request.headers);
