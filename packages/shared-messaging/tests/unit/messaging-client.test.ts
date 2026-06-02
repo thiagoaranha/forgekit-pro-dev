@@ -7,15 +7,17 @@ import type { MessagingClient } from '../../src/types.js';
 
 vi.mock('../../src/connection-manager', () => {
   return {
-    ConnectionManager: vi.fn().mockImplementation(() => ({
-      connect: vi.fn().mockResolvedValue(undefined),
-      disconnect: vi.fn().mockResolvedValue(undefined),
-      isConnected: vi.fn().mockReturnValue(true),
-      getChannel: vi.fn().mockResolvedValue({
-        assertExchange: vi.fn().mockResolvedValue(undefined),
-        bindQueue: vi.fn().mockResolvedValue(undefined),
-      } as unknown as ConfirmChannel),
-    })),
+    ConnectionManager: vi.fn().mockImplementation(function (this: any) {
+      return {
+        connect: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        isConnected: vi.fn().mockReturnValue(true),
+        getChannel: vi.fn().mockResolvedValue({
+          assertExchange: vi.fn().mockResolvedValue(undefined),
+          bindQueue: vi.fn().mockResolvedValue(undefined),
+        } as unknown as ConfirmChannel),
+      };
+    }),
   };
 });
 
