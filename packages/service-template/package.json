@@ -14,7 +14,7 @@
     "@forgekit/shared-error-handling": "workspace:*",
     "@forgekit/shared-observability": "workspace:*",
     "@forgekit/shared-tooling": "workspace:*",
-    "fastify": "^4.26.2"
+    "fastify": "^5.7.3"
   },
   "devDependencies": {
     "typescript": "^5.4.5",
