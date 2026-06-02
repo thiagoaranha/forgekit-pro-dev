@@ -11,7 +11,7 @@ async function waitForGatewayHealth() {
     await sleep(3000);
 
     try {
-      const response = await fetch('http://localhost:3000/health/live');
+      const response = await fetch('http://127.0.0.1:3000/health/live');
       if (response.ok) {
         const body = await response.json();
         if (body.status === 'OK') {
