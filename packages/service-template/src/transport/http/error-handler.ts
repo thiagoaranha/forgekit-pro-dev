@@ -20,7 +20,7 @@ const errorCodeByStatus = (statusCode: number): string => {
 };
 
 export const registerErrorHandler = (server: FastifyInstance, metrics: InMemoryMetrics): void => {
-    server.setErrorHandler((error, request, reply) => {
+    server.setErrorHandler((error: any, request, reply) => {
         metrics.observeError();
 
         const traceId = resolveCorrelationId(request);
