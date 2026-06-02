@@ -31,10 +31,14 @@ const getOrCreateHistogram = (
   });
 };
 
+// SEC-007: The routing_key label was intentionally removed from this metric (spec-011).
+// Dynamic routing keys (e.g., order.updated.12345) would create unbounded Prometheus
+// time series and risk OOM on the metrics server. The exchange label provides sufficient
+// publisher-side aggregation. Routing keys remain observable in structured logs and traces.
 export const messagingPublishedTotal = getOrCreateCounter(
   'messaging_published_total',
-  'Total published messages.',
-  ['service', 'exchange', 'routing_key']
+  'Total messages published (routing_key label removed in spec-011 for cardinality safety).',
+  ['service', 'exchange']
 );
 
 export const messagingConsumedTotal = getOrCreateCounter(

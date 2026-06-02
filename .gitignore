@@ -40,3 +40,7 @@ prisma/dev.db-journal
 
 # ForgeKit specific
 infra/postgres-data/
+
+# Coverage
+coverage/
+**/coverage/

@@ -9,11 +9,14 @@
     "dev": "tsx src/index.ts"
   },
   "dependencies": {
-    "@fastify/http-proxy": "^9.4.0",
-    "@fastify/jwt": "^8.0.0",
+    "@fastify/cors": "^10.0.2",
+    "@fastify/helmet": "^12.0.1",
+    "@fastify/http-proxy": "^11.4.4",
+    "@fastify/jwt": "^9.0.3",
     "@forgekit/shared-observability": "workspace:*",
+    "@forgekit/shared-security": "workspace:*",
     "@forgekit/shared-tooling": "workspace:*",
-    "fastify": "^4.26.2",
+    "fastify": "^5.7.3",
     "zod": "^3.23.0"
   },
   "devDependencies": {
