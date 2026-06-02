@@ -70,7 +70,7 @@ ForgeKit utilizes a monorepo approach to streamline dependency management and cr
 - `packages/`: Shared libraries utilized across services (e.g., observability, tooling, testing). These packages contain zero domain logic.
 - `infra/`: Infrastructure definitions, primarily Docker and Docker Compose configurations for local development.
 - `scripts/`: Project utility scripts for bootstrapping the environment and scaffolding new services.
-- `docs/` (and `specs/`): Technical specifications, architectural planning documents, and the project constitution.
+- `docs/` (and `specs/`): Technical specifications, architectural planning documents, the project constitution, and developer guides (including the AI agent governance structure).
 
 There is absolutely **no cross-service domain coupling**. Services communicate exclusively via defined network boundaries.
 
@@ -117,12 +117,12 @@ pnpm scaffold <service-name> --with-database
 pnpm scaffold <service-name> --with-messaging
 ```
 
-The scaffolding process automatically:
+The scaffolding process generates the service skeleton:
 - **Generates Standard Structure:** Creates all Clean Architecture layers (Transport, Application, Domain, Infra).
 - **Injects Dependencies:** Adds required packages (`prisma`, `amqplib`, etc.) to `package.json` based on selected flags.
-- **Auto-registers Infra:** Injects the service into `docker-compose.yml` with correct network and environment settings.
-- **Integrates with Bootstrap:** Updates the root `pnpm boot` script to include the new service in database synchronization tasks.
-- **Pre-configures Observability:** Sets up structured logging and health check endpoints (`/health/live`, `/health/ready`) out of the box.
+- **Pre-configures Observability:** Sets up structured logging and health check endpoints out of the box.
+
+> **Note:** After scaffolding, several steps require **manual completion**: registering the new route in the Gateway (`apps/gateway/src/index.ts`), adding the service to `infra/docker-compose.yml`, and documenting its port in `AGENTS.md`. Use the Scaffold Assistant agent (`Act as scaffold assistant, I want to add <service> on port <N>`) for a guided checklist.
 
 ## Service Doctor (Intelligent Diagnostics)
 
