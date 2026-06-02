@@ -11,14 +11,15 @@
   },
   "dependencies": {
     "@forgekit/shared-error-handling": "workspace:*",
-    "fastify-plugin": "^4.5.1"
+    "@forgekit/shared-observability": "workspace:*",
+    "fastify-plugin": "^5.0.1"
   },
   "peerDependencies": {
-    "fastify": "^4.26.2"
+    "fastify": "^5.7.3"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^1.5.0",
+    "@vitest/coverage-v8": "^3.2.3",
     "typescript": "^5.4.5",
-    "vitest": "^1.5.0"
+    "vitest": "^3.2.3"
   }
 }

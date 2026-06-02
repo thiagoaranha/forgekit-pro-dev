@@ -47,7 +47,8 @@ class MessagingClientImpl implements MessagingClient {
   async publish<T>(exchange: string, routingKey: string, payload: T, options: PublishOptions = {}): Promise<void> {
     const channel = await this.connectionManager.getChannel();
     await publishMessage(channel, exchange, routingKey, payload, options);
-    messagingPublishedTotal.labels(this.options.serviceName, exchange, routingKey).inc();
+    // SEC-007: routing_key removed from labels — see messaging-metrics.ts
+    messagingPublishedTotal.labels(this.options.serviceName, exchange).inc();
   }
 
   async subscribe<T>(queue: string, handler: MessageHandler<T>, options: SubscribeOptions<T> = {}): Promise<void> {

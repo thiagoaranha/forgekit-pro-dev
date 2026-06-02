@@ -53,10 +53,11 @@ async function main() {
   }
 
   console.log('\n[4/4] System is running!');
-  console.log('Gateway: http://localhost:3000');
-  console.log('Example Service: http://localhost:3001');
-  console.log('PostgreSQL: localhost:5432');
-  console.log('RabbitMQ Mgmt: http://localhost:15672 (forgekit:secret)');
+  console.log('Gateway:        http://localhost:3000');
+  console.log('');
+  console.log('Internal services are not directly reachable from the host by default (SEC-012).');
+  console.log('To enable direct access for development (DB clients, RabbitMQ UI), run with:');
+  console.log('  docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.override.yml up');
 
 }
 
