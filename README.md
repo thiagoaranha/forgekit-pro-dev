@@ -122,8 +122,9 @@ The scaffolding process generates the service skeleton:
 - **Injects Dependencies:** Adds required packages (`prisma`, `amqplib`, etc.) to `package.json` based on selected flags.
 - **Pre-configures Observability:** Sets up structured logging and health check endpoints out of the box.
 
-> **Note:** After scaffolding, several steps require **manual completion**: registering the new route in the Gateway (`apps/gateway/src/index.ts`), adding the service to `infra/docker-compose.yml`, and documenting its port in `AGENTS.md`. Use the Scaffold Assistant agent (`Act as scaffold assistant, I want to add <service> on port <N>`) for a guided checklist.
-
+> **Note:** The scaffolding engine automatically wires your new service into the API Gateway (`apps/gateway/src/index.ts`), injects it into `infra/compose/docker-compose.yml`, and updates the bootstrap script. 
+> 
+> **Architecture Testing:** To ensure that updates to infrastructure or dependencies do not break the template or scaffolding automation, you can validate the system end-to-end by running: `pnpm test:e2e-scaffold`. This spins up a temporary service, validates it, and performs a clean teardown.
 ## Service Doctor (Intelligent Diagnostics)
 
 Maintaining a complex microservices stack can be challenging. ForgeKit includes a **Service Doctor** to identify and help fix issues automatically.

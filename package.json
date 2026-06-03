@@ -16,6 +16,7 @@
     "dev": "pnpm -r run dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
+    "test:e2e-scaffold": "node scripts/testing/e2e-scaffold.js",
     "lint": "pnpm -r run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,yaml,yml}\""
   },
