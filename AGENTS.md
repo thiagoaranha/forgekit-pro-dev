@@ -45,7 +45,7 @@
 - No test suites/config are currently wired in repo-level CI despite `test` scripts at root.
 
 ## Existing Governance Docs (use as policy input, not source of implementation truth)
-- `.specify/memory/constitution.md`
+- `docs/constitution.md` — Core engineering principles (clean code, testing, security, observability, microservices boundaries, AI governance)
 - `specs/004-forgekit-version-control/spec.md` (documents trunk-based flow on `master` + Conventional Commits)
 - `docs/ai-agent-structure.md` (developer guide explaining the `.ai/` folder structure and usage)
 
@@ -72,10 +72,19 @@ All AI governance files live under `.ai/`. Load only what is relevant to your cu
 ### `.ai/skills/` — Repeatable workflow procedures
 | File | Invocation phrase |
 |------|------------------|
+| `.ai/skills/sdd-workflow.skill.md` | *"Create a new spec for [feature]"*, *"Plan [feature]"*, *"Generate tasks for [feature]"*, *"Implement [feature]"* |
 | `.ai/skills/doc-sync.skill.md` | *"Execute Doc Sync Skill"* |
 | `.ai/skills/pr-generator.skill.md` | *"Generate a PR message for these changes"* |
 | `.ai/skills/spec-audit.skill.md` | *"Execute Spec Audit for [spec path]"* |
 | `.ai/skills/constitution-check.skill.md` | *"Execute Constitution Check"* |
+
+### `.ai/templates/` — Document templates for the SDD workflow
+| File | Used by |
+|------|--------|
+| `.ai/templates/spec-template.md` | `sdd.specify` — structure for `spec.md` |
+| `.ai/templates/plan-template.md` | `sdd.plan` — structure for `plan.md` |
+| `.ai/templates/tasks-template.md` | `sdd.tasks` — structure for `tasks.md` |
+| `.ai/templates/checklist-template.md` | `sdd.checklist` — structure for `checklist.md` |
 
 ### `.ai/hooks/` — Runnable automation scripts
 | Script | Usage |
