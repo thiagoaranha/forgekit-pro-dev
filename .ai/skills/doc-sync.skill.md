@@ -18,7 +18,7 @@ The agent MUST verify and propose updates to the following documents if impacted
    - Verify if changes impact "Getting Started", "Common Commands", "Prerequisites", or the high-level description.
 2. **`AGENTS.md`**: 
    - Verify if changes impact "Runtime + Workspace Facts", "High-Value Commands", "Architecture Reality", or "Gotchas Likely To Waste Time". (e.g. adding a new service port or exposing a new shared library).
-3. **`.specify/memory/constitution.md`**: 
+3. **`docs/constitution.md`**:
    - Check if new standards, testing rules, or security requirements have been implicitly created or need to be formalized. *(Note: Requires explicit user consent to modify)*.
 4. **`specs/*.md`**: 
    - Verify if the implementation deviates from or fulfills any documented specification, requiring an update to the spec's state, details, or acceptance scenarios.
