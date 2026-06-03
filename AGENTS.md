@@ -16,6 +16,7 @@
 - Prisma helpers are recursive from root: `pnpm db:push`, `pnpm db:generate`.
 - Diagnose service issues: `pnpm service:doctor <service-name>` (log analysis, failure recognition, self-healing suggestions).
 - Validate a spec document: `pnpm validate-spec <spec-path>`.
+- Run E2E architecture scaffolding test: `pnpm test:e2e-scaffold` (automates template generation, boot, validation, and teardown).
 
 ## Focused Commands You Will Need
 - Gateway only: `pnpm --filter gateway dev` (or `build` / `start`).
@@ -39,7 +40,7 @@
   - `packages/service-template`: Canonical template for new services (excluded from pnpm workspace via `pnpm-workspace.yaml`).
 
 ## Gotchas Likely To Waste Time
-- `scripts/scaffold/index.js` only copies `packages/service-template` into `apps/services/<name>` and replaces `{{SERVICE_NAME}}` in two files; it does **not** auto-register routes in gateway or docker-compose.
+- `scripts/scaffold/index.js` is fully automated (Zero-Config). It will assign ports, wire the API gateway, update docker-compose, and configure Prisma/RabbitMQ automatically. Trust the scaffold.
 - Bootstrap script supports both `docker compose` and `docker-compose` and runs `prisma db push --accept-data-loss` inside the `example-service` container.
 - No test suites/config are currently wired in repo-level CI despite `test` scripts at root.
 

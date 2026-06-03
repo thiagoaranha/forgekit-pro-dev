@@ -40,6 +40,13 @@
 - Test commands: `pnpm test` (all), `pnpm --filter <service> test` (per-service).
 - Note: As of current state, test suites are not wired in repo-level CI — this is a known gap to address.
 
+## Architecture E2E Test (E2E Scaffold Test)
+
+To ensure that the service template (`packages/service-template`) and infrastructure continue to function correctly, AI agents and QA validators must trigger the architecture E2E test when modifying bootstrap scripts or the base service template itself.
+
+- Command: `pnpm test:e2e-scaffold`
+- Orchestrates the temporary creation of a service, boots the environment, validates the service's health (using `service:doctor`), and ensures that Docker and Node orchestration hasn't been broken. The script performs an autonomous cleanup (local `rollback`) upon success or failure.
+
 ## What to Test First (Priority Order)
 
 1. Critical business logic and data transformations

@@ -42,7 +42,6 @@ async function main() {
 
   console.log('\n[2/4] Synchronizing database schemas...');
   runCompose(compose, ['exec', '-T', 'example-service', 'npx', 'prisma', 'db', 'push', '--accept-data-loss']);
-  runCompose(compose, ['exec', '-T', 'qa-test-svc', 'npx', 'prisma', 'db', 'push', '--accept-data-loss']);
 
   console.log('\n[3/4] Waiting for Gateway to report healthy...');
   const healthy = await waitForGatewayHealth();
