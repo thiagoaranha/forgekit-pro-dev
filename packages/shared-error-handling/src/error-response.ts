@@ -16,7 +16,20 @@ export type ErrorResult = {
   body: ErrorResponse;
 };
 
-export const toErrorResponse = (error: unknown): ErrorResult => {
+/**
+ * Converts any Error or AppError into a standardized ErrorResult.
+ *
+ * @param error - The error to convert.
+ * @param sanitizeDetails - Optional function applied to `AppError.details` before
+ *   attaching it to the response body. When provided (e.g., by errorHandlerPlugin),
+ *   it prevents internal infrastructure details from leaking to HTTP clients (SEC-002).
+ *   When absent, `details` is included as-is for backward compatibility with direct callers
+ *   that control their own details objects.
+ */
+export const toErrorResponse = (
+  error: unknown,
+  sanitizeDetails?: (details: unknown) => unknown
+): ErrorResult => {
   const correlationId = getCorrelationId();
   const traceId = getTraceId();
 
@@ -29,7 +42,7 @@ export const toErrorResponse = (error: unknown): ErrorResult => {
     };
 
     if (error.isOperational && error.details !== undefined) {
-      body.details = error.details;
+      body.details = sanitizeDetails ? sanitizeDetails(error.details) : error.details;
     }
 
     return {

@@ -106,6 +106,16 @@ const publishToDlq = async (
       { err: dlqError, queue, dlqQueue },
       'Failed to publish message to DLQ, leaving original message unacked'
     );
+
+    // SEC-006: Definitively reject the message with nack(requeue: false) to prevent
+    // an infinite redelivery loop. If we leave the message unacknowledged and the
+    // connection closes, RabbitMQ requeues it; it will hit the same broken DLQ again.
+    // Operators can recover the message via RabbitMQ shovel or manual intervention.
+    channel.nack(message, false, false);
+    logger.warn(
+      { queue, dlqQueue, err: dlqError },
+      'DLQ publish failed — message definitively rejected (nack no-requeue)'
+    );
     return false;
   }
 };
