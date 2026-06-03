@@ -12,7 +12,7 @@ Invoke this skill when:
 
 ## Context to Load
 Before starting, load the following files:
-- `.specify/memory/constitution.md` — the canonical governance document
+- `docs/constitution.md` — the canonical governance document
 - `.ai/rules/code-style.md` — if the diff touches any source code
 - `.ai/rules/testing.md` — always
 - `.ai/rules/api-conventions.md` — if the diff touches HTTP handlers, middleware, or routes
