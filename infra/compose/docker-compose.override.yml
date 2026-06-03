@@ -1,0 +1,40 @@
+# =============================================================================
+# DEVELOPMENT OVERRIDE — LOCAL ACCESS ONLY
+# =============================================================================
+#
+# This file re-exposes internal service ports bound exclusively to 127.0.0.1
+# (loopback interface) for local developer ergonomics (e.g., running Prisma
+# Studio, connecting a DB client, or inspecting RabbitMQ management UI).
+#
+# ⚠️  WARNING: This file MUST NOT be applied in any staging or production
+#     environment. It exposes infrastructure ports that bypass the gateway's
+#     authentication layer. The loopback binding (127.0.0.1) prevents external
+#     network access, but it still allows any process running on the host to
+#     connect directly to the database and message broker.
+#
+# Usage:
+#   pnpm boot                           → uses docker-compose.yml only (secure default)
+#   docker compose -f infra/compose/docker-compose.yml \
+#     -f infra/compose/docker-compose.override.yml up  → with developer port access
+#
+# =============================================================================
+
+name: forgekit
+
+services:
+  example-service:
+    ports:
+      # Bound to loopback only — not accessible from external network interfaces
+      - "127.0.0.1:3001:3001"
+
+  postgres:
+    ports:
+      # Bound to loopback only — allows DB clients and Prisma Studio on localhost
+      - "127.0.0.1:5432:5432"
+
+  rabbitmq:
+    ports:
+      # AMQP port — bound to loopback only
+      - "127.0.0.1:5672:5672"
+      # Management UI — bound to loopback only (http://localhost:15672)
+      - "127.0.0.1:15672:15672"

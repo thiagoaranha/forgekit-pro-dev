@@ -36,6 +36,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Security Audit
+        # SEC-015 (FR-038): Fail the build on any high or critical vulnerability.
+        # Moderate and low are informational — threshold can be tightened when
+        # the full vulnerability backlog is cleared.
+        run: pnpm audit --audit-level=high
+
       - name: Linter Check
         run: pnpm run lint
 

@@ -11,7 +11,7 @@ async function waitForGatewayHealth() {
     await sleep(3000);
 
     try {
-      const response = await fetch('http://localhost:3000/health/live');
+      const response = await fetch('http://127.0.0.1:3000/health/live');
       if (response.ok) {
         const body = await response.json();
         if (body.status === 'OK') {
@@ -42,6 +42,7 @@ async function main() {
 
   console.log('\n[2/4] Synchronizing database schemas...');
   runCompose(compose, ['exec', '-T', 'example-service', 'npx', 'prisma', 'db', 'push', '--accept-data-loss']);
+  runCompose(compose, ['exec', '-T', 'qa-test-svc', 'npx', 'prisma', 'db', 'push', '--accept-data-loss']);
 
   console.log('\n[3/4] Waiting for Gateway to report healthy...');
   const healthy = await waitForGatewayHealth();
@@ -53,10 +54,11 @@ async function main() {
   }
 
   console.log('\n[4/4] System is running!');
-  console.log('Gateway: http://localhost:3000');
-  console.log('Example Service: http://localhost:3001');
-  console.log('PostgreSQL: localhost:5432');
-  console.log('RabbitMQ Mgmt: http://localhost:15672 (forgekit:secret)');
+  console.log('Gateway:        http://localhost:3000');
+  console.log('');
+  console.log('Internal services are not directly reachable from the host by default (SEC-012).');
+  console.log('To enable direct access for development (DB clients, RabbitMQ UI), run with:');
+  console.log('  docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.override.yml up');
 
 }
 

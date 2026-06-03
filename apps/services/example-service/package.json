@@ -15,7 +15,7 @@
     "@forgekit/shared-observability": "workspace:*",
     "@forgekit/shared-tooling": "workspace:*",
     "@prisma/client": "^5.12.1",
-    "fastify": "^4.26.2",
+    "fastify": "^5.7.3",
     "zod": "^3.23.0"
   },
   "devDependencies": {
