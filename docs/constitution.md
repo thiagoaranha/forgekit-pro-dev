@@ -1,33 +1,4 @@
-<!--
-SYNC IMPACT REPORT
-==================
-Version change: (none) → 1.0.0
-Bump rationale: Initial constitution — MAJOR version for baseline governance.
 
-Modified principles: (none — new document)
-
-Added sections:
-  - I. Clean Code & Readability
-  - II. Testing Standards (80% Minimum Coverage)
-  - III. Performance & Concurrency
-  - IV. Security by Default
-  - V. Observability & Traceability
-  - VI. Microservices Architecture Boundaries
-  - VII. AI-Assisted Development Governance
-  - Security Requirements (additional constraints)
-  - Development Workflow & Quality Gates
-  - Governance (amendment procedure, versioning policy, compliance)
-
-Removed sections: (none)
-
-Templates requiring updates:
-  - .specify/templates/plan-template.md          ✅ No change needed — Constitution Check section is generic
-  - .specify/templates/spec-template.md           ✅ No change needed — spec template is requirement-agnostic
-  - .specify/templates/tasks-template.md          ✅ No change needed — task template supports test gates generically
-  - .qwen/commands/speckit.*.md                   ✅ No change needed — no agent-specific references found
-
-Deferred items: (none)
--->
 
 # forgeKit Constitution
 
